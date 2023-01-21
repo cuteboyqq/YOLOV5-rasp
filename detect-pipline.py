@@ -249,16 +249,17 @@ def load_model(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
                dnn=False,
                data=ROOT / 'data/coco128.yaml',
                half=False,
-               imgsz=(640, 640)):
+               imgsz=(192, 192)):
     device = select_device(device)
     model = DetectMultiBackend(weights, device=device, dnn=dnn, data=data, fp16=half)
     stride, names, pt = model.stride, model.names, model.pt
     imgsz = check_img_size(imgsz, s=stride)  # check image size
-    raise NotImplemented
+    #raise NotImplemented
+    return model, stride, pt, imgsz, device, names
 #    
 def load_dataloader(source=0,
                     nosave=False,
-                    imgsz=(640,640),
+                    imgsz=(192,192),
                     stride = 16,
                     pt = ''
                     ):
@@ -280,22 +281,37 @@ def load_dataloader(source=0,
         dataset = LoadImages(source, img_size=imgsz, stride=stride, auto=pt)
         bs = 1  # batch_size
     vid_path, vid_writer = [None] * bs, [None] * bs
-    raise NotImplemented
+    #raise NotImplemented
+    
+    return dataset, bs, source
 #    
 def Run_inference(model='',
                   pt='',
                   bs=64,
-                  imgsz=(640,640),
-                  dataset='',
+                  imgsz=(192,192),
+                  dataset=None,
                   device='',
                   visualize=False,
-                  save_dir='',
+                  project = ROOT / 'runs/detect',
+                  name='exp',
+                  names='',
+                  source = '',
+                  exist_ok=False,
+                  save_txt=False,
                   augment=False,
                   conf_thres=0.25,
                   classes=None,
                   iou_thres=0.45,
                   agnostic_nms=False,
-                  max_det=1000):
+                  max_det=1000,
+                  save_conf=False,
+                  save_img=False,
+                  view_img=False,
+                  hide_labels=False,
+                  hide_conf=False):
+    # Directories
+    save_dir = increment_path(Path(project) / name, exist_ok=exist_ok)  # increment run
+    (save_dir / 'labels' if save_txt else save_dir).mkdir(parents=True, exist_ok=True)  # make dir
     model.warmup(imgsz=(1 if pt else bs, 3, *imgsz))  # warmup
     seen, windows, dt = 0, [], (Profile(), Profile(), Profile())
     for path, im, im0s, vid_cap, s in dataset:
@@ -317,10 +333,29 @@ def Run_inference(model='',
 
         # Second-stage classifier (optional)
         # pred = utils.general.apply_classifier(pred, classifier_model, im, im0s)
-    
-    Process_Prediction()
-    Save_Result()
-    raise NotImplemented
+        
+        Process_Prediction(pred=pred,
+                            source = source,
+                            path=path,
+                            im0s=im0s,
+                            dataset = dataset,
+                            s=s,
+                            save_dir=save_dir,
+                            im =im,
+                            save_crop=False,
+                            line_thickness=3,
+                            names=names,
+                            save_txt=save_txt,
+                            save_conf=save_conf,
+                            save_img=save_img,
+                            view_img=view_img,
+                            hide_labels=hide_labels,
+                            hide_conf=hide_conf,
+                            dt=dt)
+        
+        
+    #Save_Result()
+    #raise NotImplemented
 
 # will use this func in Run_inference function
 def Process_Prediction(pred=None,
@@ -339,10 +374,11 @@ def Process_Prediction(pred=None,
                        save_img=False,
                        view_img=False,
                        hide_labels=False,
-                       hide_conf=False
+                       hide_conf=False,
+                       dt=None
                        ):
     
-    seen, windows, dt = 0, [], (Profile(), Profile(), Profile())
+    seen, windows = 0, []
     is_url = source.lower().startswith(('rtsp://', 'rtmp://', 'http://', 'https://'))
     is_file = Path(source).suffix[1:] in (IMG_FORMATS + VID_FORMATS)
     webcam = source.isnumeric() or source.endswith('.txt') or (is_url and not is_file)
@@ -394,7 +430,10 @@ def Process_Prediction(pred=None,
                 cv2.resizeWindow(str(p), im0.shape[1], im0.shape[0])
             cv2.imshow(str(p), im0)
             cv2.waitKey(1)  # 1 millisecond
-    raise NotImplemented
+    #raise NotImplemented
+    # Print time (inference-only)
+    LOGGER.info(f"{s}{'' if len(det) else '(no detections), '}{(dt[0].dt + dt[1].dt + dt[2].dt) * 1E3:.1f}ms")
+    return save_path
     
 # will use this func in Run_inference function
 def Save_Result(save_img=True,
@@ -433,8 +472,53 @@ def main(opt):
 
 if __name__ == "__main__":
     opt = parse_opt()
-    main(opt)
+    #main(opt)
+    weights = opt.weights
+    data = opt.data
+    imgsz = opt.imgsz
+    save_conf = opt.save_conf
+    nosave = opt.nosave
+    view_img = opt.view_img
+    hide_labels = opt.hide_labels
+    hide_conf = opt.hide_conf
+    source = opt.source
     
-    load_model()
-    load_dataloader()
-    Run_inference()
+    
+    save_img = not nosave and not source.endswith('.txt')  # save inference images
+    
+    model, stride, pt, imgsz, device, names = load_model(weights=weights,  # model.pt path(s)
+                                                   device='',
+                                                   dnn=False,
+                                                   data=data,
+                                                   half=False,
+                                                   imgsz=imgsz)
+    dataset, bs, source = load_dataloader(source=source,
+                                    nosave=False,
+                                    imgsz=imgsz,
+                                    stride=stride,
+                                    pt=pt
+                                    )
+    Run_inference(model=model,
+                      pt=pt,
+                      bs=bs,
+                      imgsz=imgsz,
+                      dataset=dataset,
+                      device=device,
+                      visualize=False,
+                      project = ROOT / 'runs/detect',
+                      name='exp',
+                      names=names,
+                      source=source,
+                      exist_ok=False,
+                      save_txt=False,
+                      augment=False,
+                      conf_thres=0.25,
+                      classes=None,
+                      iou_thres=0.45,
+                      agnostic_nms=False,
+                      max_det=1000,
+                      save_conf=save_conf,
+                      save_img=save_img,
+                      view_img=view_img,
+                      hide_labels=hide_labels,
+                      hide_conf=hide_conf)
