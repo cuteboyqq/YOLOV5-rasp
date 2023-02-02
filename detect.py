@@ -48,6 +48,7 @@ from utils.plots import Annotator, colors, save_one_box
 from utils.torch_utils import select_device, smart_inference_mode
 
 
+
 @smart_inference_mode()
 def run(
         weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
@@ -368,14 +369,18 @@ def Run_inference(model='',
 
 
 def Get_Frame(im, dataset):
+    global im_global
     #for path, im, im0s, vid_cap, s in dataset:
     im = torch.from_numpy(im).to(device)
     im = im.half() if model.fp16 else im.float()  # uint8 to fp16/32
     im /= 255  # 0 - 255 to 0.0 - 1.0
     if len(im.shape) == 3:
         im = im[None]  # expand for batch dim
+            
+    im_global = im
+    #print(im_global.shape)
     #return im, path, s, im0s, vid_cap
-    return im
+    #return im_global
 
 def model_inference(visualize,save_dir,im,path,augment):
     # Directories
@@ -650,9 +655,9 @@ if __name__ == "__main__":
     for path, im, im0s, vid_cap, s in dataset:
         with dt[0]:
             #im, path, s, im0s, vid_cap = Get_Frame(im,dataset)
-            im = Get_Frame(im,dataset)
+            Get_Frame(im,dataset)
         with dt[1]:
-            pred = model_inference(visualize,save_dir,im,path,augment)
+            pred = model_inference(visualize,save_dir,im_global,path,augment)
         with dt[2]:
             PostProcess(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det,
                             source,
@@ -661,7 +666,7 @@ if __name__ == "__main__":
                             dataset,
                             s,
                             save_dir,
-                            im,
+                            im_global,
                             save_crop,
                             line_thickness,
                             names,
