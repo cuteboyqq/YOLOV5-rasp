@@ -1,4 +1,4 @@
-# YOLOv5 🚀 by Ultralytics, GPL-3.0 license
+# YOLOv5 ğŸš€ by Ultralytics, GPL-3.0 license
 """
 Run inference on images, videos, directories, streams, etc.
 
@@ -28,6 +28,7 @@ import argparse
 import os
 import platform
 import sys
+import threading
 from pathlib import Path
 
 import torch
@@ -146,7 +147,8 @@ def run(
             annotator = Annotator(im0, line_width=line_thickness, example=str(names))
             if len(det):
                 # Rescale boxes from img_size to im0 size
-                det[:, :4] = scale_coords(im.shape[2:], det[:, :4], im0.shape).round()
+                #det[:, :4] = scale_coords(im.shape[2:], det[:, :4], im0.shape).round()
+                det[:, :4] = scale_boxes(im.shape[2:], det[:, :4], im0.shape).round()
 
                 # Print results
                 for c in det[:, -1].unique():
@@ -319,20 +321,23 @@ def Run_inference(model='',
     seen, windows, dt = 0, [], (Profile(), Profile(), Profile())
     for path, im, im0s, vid_cap, s in dataset:
         with dt[0]:
-            im = torch.from_numpy(im).to(device)
-            im = im.half() if model.fp16 else im.float()  # uint8 to fp16/32
-            im /= 255  # 0 - 255 to 0.0 - 1.0
-            if len(im.shape) == 3:
-                im = im[None]  # expand for batch dim
+            im = Get_Frame(im)
+            #im = torch.from_numpy(im).to(device)
+            #im = im.half() if model.fp16 else im.float()  # uint8 to fp16/32
+            #im /= 255  # 0 - 255 to 0.0 - 1.0
+            #if len(im.shape) == 3:
+                #im = im[None]  # expand for batch dim
 
         # Inference
         with dt[1]:
-            visualize = increment_path(save_dir / Path(path).stem, mkdir=True) if visualize else False
-            pred = model(im, augment=augment, visualize=visualize)
+            pred = model_inference(visualize,save_dir,path,im,augment)
+            #visualize = increment_path(save_dir / Path(path).stem, mkdir=True) if visualize else False
+            #pred = model(im, augment=augment, visualize=visualize)
 
         # NMS
         with dt[2]:
-            pred = non_max_suppression(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)
+            pred = nms(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det)
+            #pred = non_max_suppression(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)
 
         # Second-stage classifier (optional)
         # pred = utils.general.apply_classifier(pred, classifier_model, im, im0s)
@@ -360,6 +365,25 @@ def Run_inference(model='',
                             vid_writer=vid_writer)
         
     #raise NotImplemented
+
+
+def Get_Frame(im):
+    im = torch.from_numpy(im).to(device)
+    im = im.half() if model.fp16 else im.float()  # uint8 to fp16/32
+    im /= 255  # 0 - 255 to 0.0 - 1.0
+    if len(im.shape) == 3:
+        im = im[None]  # expand for batch dim
+    return im
+
+def model_inference(visualize,save_dir,path,im,augment):
+    # Directories
+    visualize = increment_path(save_dir / Path(path).stem, mkdir=True) if visualize else False
+    pred = model(im, augment=augment, visualize=visualize)
+    return pred
+
+def nms(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det):
+    pred = non_max_suppression(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)
+    return pred
 
 # will use this func in Run_inference function
 def Process_Prediction(pred=None,
@@ -531,6 +555,76 @@ if __name__ == "__main__":
                                     stride=stride,
                                     pt=pt
                                     )
+    
+    
+    #================================
+    '''
+    # 建立一個子執行緒
+    t = threading.Thread(target = job)
+    
+    # 執行該子執行緒
+    t.start()
+    
+    # 主執行緒繼續執行自己的工作
+    #for i in range(3):
+      #print("Main thread:", i)
+      #time.sleep(1)
+    
+    # 等待 t 這個子執行緒結束
+    t.join()
+    '''
+    #================================
+    name = opt.name
+    project = opt.project
+    exist_ok = opt.exist_ok
+    save_txt = opt.save_txt
+    visualize = opt.visualize
+    augment = opt.augment
+    conf_thres = opt.conf_thres
+    iou_thres = opt.iou_thres
+    classes = opt.classes
+    agnostic_nms = opt.agnostic_nms
+    max_det = opt.max_det
+    
+    bs = len(dataset)  # batch_size
+    vid_path, vid_writer = [None] * bs, [None] * bs
+    # Directories
+    save_dir = increment_path(Path(project) / name, exist_ok=exist_ok)  # increment run
+    (save_dir / 'labels' if save_txt else save_dir).mkdir(parents=True, exist_ok=True)  # make dir
+    model.warmup(imgsz=(1 if pt else bs, 3, *imgsz))  # warmup
+    seen, windows, dt = 0, [], (Profile(), Profile(), Profile())
+    
+    for path, im, im0s, vid_cap, s in dataset:
+        with dt[0]:
+            im = Get_Frame(im)
+        with dt[1]:
+            pred = model_inference(visualize,save_dir,path,im,augment)
+        with dt[2]:
+            pred = nms(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det)
+            
+        save_path, im0 = Process_Prediction(pred=pred,
+                            source = source,
+                            path=path,
+                            im0s=im0s,
+                            dataset = dataset,
+                            s=s,
+                            save_dir=save_dir,
+                            im =im,
+                            save_crop=False,
+                            line_thickness=3,
+                            names=names,
+                            save_txt=save_txt,
+                            save_conf=save_conf,
+                            save_img=save_img,
+                            view_img=view_img,
+                            hide_labels=hide_labels,
+                            hide_conf=hide_conf,
+                            dt=dt,
+                            vid_cap=vid_cap,
+                            vid_path=vid_path,
+                            vid_writer=vid_writer)
+        
+    '''
     Run_inference(model=model,
                       pt=pt,
                       bs=bs,
@@ -555,3 +649,4 @@ if __name__ == "__main__":
                       view_img=view_img,
                       hide_labels=hide_labels,
                       hide_conf=hide_conf)
+    '''
