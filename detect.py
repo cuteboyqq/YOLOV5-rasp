@@ -367,15 +367,17 @@ def Run_inference(model='',
     #raise NotImplemented
 
 
-def Get_Frame(im):
+def Get_Frame(im, dataset):
+    #for path, im, im0s, vid_cap, s in dataset:
     im = torch.from_numpy(im).to(device)
     im = im.half() if model.fp16 else im.float()  # uint8 to fp16/32
     im /= 255  # 0 - 255 to 0.0 - 1.0
     if len(im.shape) == 3:
         im = im[None]  # expand for batch dim
+    #return im, path, s, im0s, vid_cap
     return im
 
-def model_inference(visualize,save_dir,path,im,augment):
+def model_inference(visualize,save_dir,im,path,augment):
     # Directories
     visualize = increment_path(save_dir / Path(path).stem, mkdir=True) if visualize else False
     pred = model(im, augment=augment, visualize=visualize)
@@ -489,9 +491,58 @@ def Process_Prediction(pred=None,
                         vid_cap=vid_cap
                         )
         '''
-    LOGGER.info(f"{s}{'' if len(det) else '(no detections), '}{(dt[0].dt + dt[1].dt + dt[2].dt) * 1E3:.1f}ms")
+    #LOGGER.info(f"{s}{'' if len(det) else '(no detections), '}{(dt[0].dt + dt[1].dt + dt[2].dt) * 1E3:.1f}ms")
     return save_path, im0
+
+
+def PostProcess(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det,
+                source,
+                path,
+                im0s,
+                dataset,
+                s,
+                save_dir,
+                im,
+                save_crop,
+                line_thickness,
+                names,
+                save_txt,
+                save_conf,
+                save_img,
+                view_img,
+                hide_labels,
+                hide_conf,
+                dt,
+                vid_cap,
+                vid_path,
+                vid_writer):
     
+    pred = nms(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det)
+
+    save_path, im0 = Process_Prediction(pred=pred,
+                        source = source,
+                        path=path,
+                        im0s=im0s,
+                        dataset = dataset,
+                        s=s,
+                        save_dir=save_dir,
+                        im =im,
+                        save_crop=False,
+                        line_thickness=3,
+                        names=names,
+                        save_txt=save_txt,
+                        save_conf=save_conf,
+                        save_img=save_img,
+                        view_img=view_img,
+                        hide_labels=hide_labels,
+                        hide_conf=hide_conf,
+                        dt=dt,
+                        vid_cap=vid_cap,
+                        vid_path=vid_path,
+                        vid_writer=vid_writer)
+    
+    
+
 # will use this func in Run_inference function
 def Save_Result(save_img=True,
                 dataset=None,
@@ -585,6 +636,8 @@ if __name__ == "__main__":
     classes = opt.classes
     agnostic_nms = opt.agnostic_nms
     max_det = opt.max_det
+    save_crop = opt.save_crop
+    line_thickness = opt.line_thickness
     
     bs = len(dataset)  # batch_size
     vid_path, vid_writer = [None] * bs, [None] * bs
@@ -596,33 +649,58 @@ if __name__ == "__main__":
     
     for path, im, im0s, vid_cap, s in dataset:
         with dt[0]:
-            im = Get_Frame(im)
+            #im, path, s, im0s, vid_cap = Get_Frame(im,dataset)
+            im = Get_Frame(im,dataset)
         with dt[1]:
-            pred = model_inference(visualize,save_dir,path,im,augment)
+            pred = model_inference(visualize,save_dir,im,path,augment)
         with dt[2]:
+            PostProcess(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det,
+                            source,
+                            path,
+                            im0s,
+                            dataset,
+                            s,
+                            save_dir,
+                            im,
+                            save_crop,
+                            line_thickness,
+                            names,
+                            save_txt,
+                            save_conf,
+                            save_img,
+                            view_img,
+                            hide_labels,
+                            hide_conf,
+                            dt,
+                            vid_cap,
+                            vid_path,
+                            vid_writer)
+            '''
             pred = nms(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det)
-            
-        save_path, im0 = Process_Prediction(pred=pred,
-                            source = source,
-                            path=path,
-                            im0s=im0s,
-                            dataset = dataset,
-                            s=s,
-                            save_dir=save_dir,
-                            im =im,
-                            save_crop=False,
-                            line_thickness=3,
-                            names=names,
-                            save_txt=save_txt,
-                            save_conf=save_conf,
-                            save_img=save_img,
-                            view_img=view_img,
-                            hide_labels=hide_labels,
-                            hide_conf=hide_conf,
-                            dt=dt,
-                            vid_cap=vid_cap,
-                            vid_path=vid_path,
-                            vid_writer=vid_writer)
+        
+            save_path, im0 = Process_Prediction(pred=pred,
+                                source = source,
+                                path=path,
+                                im0s=im0s,
+                                dataset = dataset,
+                                s=s,
+                                save_dir=save_dir,
+                                im =im,
+                                save_crop=False,
+                                line_thickness=3,
+                                names=names,
+                                save_txt=save_txt,
+                                save_conf=save_conf,
+                                save_img=save_img,
+                                view_img=view_img,
+                                hide_labels=hide_labels,
+                                hide_conf=hide_conf,
+                                dt=dt,
+                                vid_cap=vid_cap,
+                                vid_path=vid_path,
+                                vid_writer=vid_writer)
+            '''
+        LOGGER.info(f"{s}{(dt[0].dt + dt[1].dt + dt[2].dt) * 1E3:.1f}ms")
         
     '''
     Run_inference(model=model,
