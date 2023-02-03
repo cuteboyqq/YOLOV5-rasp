@@ -47,9 +47,24 @@ from utils.general import (LOGGER, Profile, check_file, check_img_size, check_im
 from utils.plots import Annotator, colors, save_one_box
 from utils.torch_utils import select_device, smart_inference_mode
 
+import threading
+import time
 
 
-@smart_inference_mode()
+im_global=None
+path_global=None
+im0s_global=None
+s_global=None
+vid_cap_global=None
+pred_global=None
+model_global=None
+
+sem1 = threading.Semaphore(0)
+sem2 = threading.Semaphore(0)
+sem3 = threading.Semaphore(0)
+sem4 = threading.Semaphore(0)
+
+#@smart_inference_mode()
 def run(
         weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
         source=ROOT / 'data/images',  # file/dir/URL/glob, 0 for webcam
@@ -368,29 +383,77 @@ def Run_inference(model='',
     #raise NotImplemented
 
 
-def Get_Frame(im, dataset):
+def Get_Frame(dataset):
+    
     global im_global
-    #for path, im, im0s, vid_cap, s in dataset:
-    im = torch.from_numpy(im).to(device)
-    im = im.half() if model.fp16 else im.float()  # uint8 to fp16/32
-    im /= 255  # 0 - 255 to 0.0 - 1.0
-    if len(im.shape) == 3:
-        im = im[None]  # expand for batch dim
+    global path_global
+    global im0s_global
+    global s_global
+    global vid_cap_global
+    
+    #path, im, im0s, vid_cap, s = dataset
+    #print(dataset)
+    dataset.__iter__()
+    while True:
+        
+        #for path, im, im0s, vid_cap, s in dataset:
             
-    im_global = im
-    #print(im_global.shape)
-    #return im, path, s, im0s, vid_cap
-    #return im_global
+        #sem4.acquire() #sem4=0
+            #for path, im, im0s, vid_cap, s in dataset:
+            #path, im, im0s, vid_cap, s = dataset
+        
+        data = dataset.__next__()
+        path, im, im0s, vid_cap, s = data
+        im = torch.from_numpy(im).to(device)
+        im = im.half() if model.fp16 else im.float()  # uint8 to fp16/32
+        im /= 255  # 0 - 255 to 0.0 - 1.0
+        if len(im.shape) == 3:
+            print("im is None")
+            im = im[None]  # expand for batch dim
+        print("im.shape: {}".format(im.shape))
+        im_global = im
+        print("im_global shape : {}".format(im_global.shape))
+        path_global = path
+        im0s_global = im0s
+        s_global = s
+        vid_cap_global = vid_cap
+        
+        print("1")
+        print("[Get_Frame]get im done")
+        sem1.release() #sem1=1
+        print("[Get_Frame]sem1 after release: {}".format(sem1))
+        #print(im_global.shape)
+        #return im, path, s, im0s, vid_cap
+        #return im_global
+        time.sleep(0.50)
 
-def model_inference(visualize,save_dir,im,path,augment):
-    # Directories
-    visualize = increment_path(save_dir / Path(path).stem, mkdir=True) if visualize else False
-    pred = model(im, augment=augment, visualize=visualize)
-    return pred
+
+
+def model_inference(visualize,save_dir,path,augment):
+    global pred_global
+    global model_global
+    while True:
+        #print("[model_inference] sem1 befroe acquire: {}".format(sem1))
+        sem1.acquire() #sem1=0
+        #print("[model_inference] sem1 after acquire: {}".format(sem1))
+        
+        # Directories
+        visualize = increment_path(save_dir / Path(path).stem, mkdir=True) if visualize else False
+        pred = model_global(im_global, augment=augment, visualize=visualize)
+    
+        pred_global = pred
+        #return pre2
+        
+        print("2")
+        print("[model_inference] sem2 start release: {}".format(sem2))
+        sem2.release() #sem2=1
+        print("[model_inference] sem2 release done: {}".format(sem2))
+        #sem4.release() #sem4=1
+        time.sleep(0.50)
 
 def nms(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det):
-    pred = non_max_suppression(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)
-    return pred
+    pred_nms = non_max_suppression(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)
+    return pred_nms
 
 # will use this func in Run_inference function
 def Process_Prediction(pred=None,
@@ -400,7 +463,7 @@ def Process_Prediction(pred=None,
                        dataset = None,
                        s='',
                        save_dir='',
-                       im = None,
+                       im = im_global,
                        save_crop = False,
                        line_thickness = 3,
                        names = '',
@@ -430,7 +493,7 @@ def Process_Prediction(pred=None,
         p = Path(p)  # to Path
         save_path = str(save_dir / p.name)  # im.jpg
         txt_path = str(save_dir / 'labels' / p.stem) + ('' if dataset.mode == 'image' else f'_{frame}')  # im.txt
-        s += '%gx%g ' % im.shape[2:]  # print string
+        #s += '%gx%g ' % im.shape[2:]  # print string
         gn = torch.tensor(im0.shape)[[1, 0, 1, 0]]  # normalization gain whwh
         imc = im0.copy() if save_crop else im0  # for save_crop
         annotator = Annotator(im0, line_width=line_thickness, example=str(names))
@@ -441,7 +504,7 @@ def Process_Prediction(pred=None,
             # Print results
             for c in det[:, -1].unique():
                 n = (det[:, -1] == c).sum()  # detections per class
-                s += f"{n} {names[int(c)]}{'s' * (n > 1)}, "  # add to string
+                #s += f"{n} {names[int(c)]}{'s' * (n > 1)}, "  # add to string
 
             # Write results
             for *xyxy, conf, cls in reversed(det):
@@ -521,30 +584,39 @@ def PostProcess(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det,
                 vid_cap,
                 vid_path,
                 vid_writer):
-    
-    pred = nms(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det)
+    global pred_global
+    global im0s_global
+    global path_global
+    global im_global
+    while True:
+        print("[PostProcess] sem2 before acquire")
+        sem2.acquire() #sem2=0
+        print("[PostProcess] sem2 after acquire")
+        pred_global = nms(pred_global, conf_thres, iou_thres, classes, agnostic_nms, max_det)
 
-    save_path, im0 = Process_Prediction(pred=pred,
-                        source = source,
-                        path=path,
-                        im0s=im0s,
-                        dataset = dataset,
-                        s=s,
-                        save_dir=save_dir,
-                        im =im,
-                        save_crop=False,
-                        line_thickness=3,
-                        names=names,
-                        save_txt=save_txt,
-                        save_conf=save_conf,
-                        save_img=save_img,
-                        view_img=view_img,
-                        hide_labels=hide_labels,
-                        hide_conf=hide_conf,
-                        dt=dt,
-                        vid_cap=vid_cap,
-                        vid_path=vid_path,
-                        vid_writer=vid_writer)
+        save_path, im0 = Process_Prediction(pred=pred_global,
+                            source = source,
+                            path=path_global,
+                            im0s=im0s_global,
+                            dataset = dataset,
+                            s=s,
+                            save_dir=save_dir,
+                            im =im_global,
+                            save_crop=False,
+                            line_thickness=3,
+                            names=names,
+                            save_txt=save_txt,
+                            save_conf=save_conf,
+                            save_img=save_img,
+                            view_img=view_img,
+                            hide_labels=hide_labels,
+                            hide_conf=hide_conf,
+                            dt=dt,
+                            vid_cap=vid_cap,
+                            vid_path=vid_path,
+                            vid_writer=vid_writer)
+        print("3")
+        time.sleep(0.50)
     
     
 
@@ -605,6 +677,10 @@ if __name__ == "__main__":
                                                    data=data,
                                                    half=False,
                                                    imgsz=imgsz)
+    
+    
+    model_global = model
+    
     dataset, bs, source = load_dataloader(source=source,
                                     nosave=False,
                                     imgsz=imgsz,
@@ -629,6 +705,7 @@ if __name__ == "__main__":
     # 等待 t 這個子執行緒結束
     t.join()
     '''
+    #https://stackoverflow.com/questions/31508574/semaphores-on-python
     #================================
     name = opt.name
     project = opt.project
@@ -652,60 +729,120 @@ if __name__ == "__main__":
     model.warmup(imgsz=(1 if pt else bs, 3, *imgsz))  # warmup
     seen, windows, dt = 0, [], (Profile(), Profile(), Profile())
     
-    for path, im, im0s, vid_cap, s in dataset:
-        with dt[0]:
-            #im, path, s, im0s, vid_cap = Get_Frame(im,dataset)
-            Get_Frame(im,dataset)
-        with dt[1]:
-            pred = model_inference(visualize,save_dir,im_global,path,augment)
-        with dt[2]:
-            PostProcess(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det,
-                            source,
-                            path,
-                            im0s,
-                            dataset,
-                            s,
-                            save_dir,
-                            im_global,
-                            save_crop,
-                            line_thickness,
-                            names,
-                            save_txt,
-                            save_conf,
-                            save_img,
-                            view_img,
-                            hide_labels,
-                            hide_conf,
-                            dt,
-                            vid_cap,
-                            vid_path,
-                            vid_writer)
-            '''
-            pred = nms(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det)
+    
+    
+    
+    print("Thread count: {}".format(threading.active_count()))
+    print("threading.enumerate() :{}".format(threading.enumerate() ))
+    #for path, im, im0s, vid_cap, s in dataset:
+    #path_global = None
+    print("before t1")
+    t1 = threading.Thread(target = Get_Frame ,args=(dataset,))
+    #with dt[0]:
+    t1.start()    
+    print("after t1.start()")
+    
+    #global path_global
+    print("before t2")
+    t2 = threading.Thread(target = model_inference,args=(visualize,save_dir,path_global,augment,))
+    #with dt[1]:
+    t2.start()
+    print("after t2.start()")
+    #
+    
+    
+    
+    print("before t3")
+    t3 = threading.Thread(target = PostProcess, args=(pred_global, conf_thres, iou_thres, classes, agnostic_nms, max_det,
+                    source,
+                    path_global,
+                    im0s_global,
+                    dataset,
+                    s_global,
+                    save_dir,
+                    im_global,
+                    save_crop,
+                    line_thickness,
+                    names,
+                    save_txt,
+                    save_conf,
+                    save_img,
+                    view_img,
+                    hide_labels,
+                    hide_conf,
+                    dt,
+                    vid_cap_global,
+                    vid_path,
+                    vid_writer,) )
+    
+    print("Thread count: {}".format(threading.active_count()))
+    #with dt[2]:
+    t3.start()
+    print("after t3.start()")
+    
+    
+    #t.join()
+    #t2.join()
+    #t3.join()
+    
+    
+    '''
+    #for path, im, im0s, vid_cap, s in dataset:
+    with dt[0]:
+        #im, path, s, im0s, vid_cap = Get_Frame(im,dataset)
+        Get_Frame(dataset)
+    with dt[1]:
+        model_inference(visualize,save_dir,path_global,augment)
+    with dt[2]:
+        PostProcess(pred_global, conf_thres, iou_thres, classes, agnostic_nms, max_det,
+                        source,
+                        path_global,
+                        im0s_global,
+                        dataset,
+                        s_global,
+                        save_dir,
+                        im_global,
+                        save_crop,
+                        line_thickness,
+                        names,
+                        save_txt,
+                        save_conf,
+                        save_img,
+                        view_img,
+                        hide_labels,
+                        hide_conf,
+                        dt,
+                        vid_cap_global,
+                        vid_path,
+                        vid_writer)
+        '''
         
-            save_path, im0 = Process_Prediction(pred=pred,
-                                source = source,
-                                path=path,
-                                im0s=im0s,
-                                dataset = dataset,
-                                s=s,
-                                save_dir=save_dir,
-                                im =im,
-                                save_crop=False,
-                                line_thickness=3,
-                                names=names,
-                                save_txt=save_txt,
-                                save_conf=save_conf,
-                                save_img=save_img,
-                                view_img=view_img,
-                                hide_labels=hide_labels,
-                                hide_conf=hide_conf,
-                                dt=dt,
-                                vid_cap=vid_cap,
-                                vid_path=vid_path,
-                                vid_writer=vid_writer)
-            '''
-        LOGGER.info(f"{s}{(dt[0].dt + dt[1].dt + dt[2].dt) * 1E3:.1f}ms")
+    '''
+        pred = nms(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det)
+    
+        save_path, im0 = Process_Prediction(pred=pred,
+                            source = source,
+                            path=path,
+                            im0s=im0s,
+                            dataset = dataset,
+                            s=s,
+                            save_dir=save_dir,
+                            im =im,
+                            save_crop=False,
+                            line_thickness=3,
+                            names=names,
+                            save_txt=save_txt,
+                            save_conf=save_conf,
+                            save_img=save_img,
+                            view_img=view_img,
+                            hide_labels=hide_labels,
+                            hide_conf=hide_conf,
+                            dt=dt,
+                            vid_cap=vid_cap,
+                            vid_path=vid_path,
+                            vid_writer=vid_writer)
+    '''
+    #LOGGER.info(f"{s_global}{(dt[0].dt + dt[1].dt + dt[2].dt) * 1E3:.1f}ms")
         
     '''
     Run_inference(model=model,
