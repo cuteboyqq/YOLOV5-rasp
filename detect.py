@@ -50,7 +50,9 @@ from utils.torch_utils import select_device, smart_inference_mode
 import threading
 import time
 
-
+time=False
+set_time = 0.025
+set_time_3 = 0.025
 im_global=None
 path_global=None
 im0s_global=None
@@ -62,7 +64,7 @@ model_global=None
 sem1 = threading.Semaphore(0)
 sem2 = threading.Semaphore(0)
 sem3 = threading.Semaphore(0)
-sem4 = threading.Semaphore(0)
+sem4 = threading.Semaphore(1)
 
 #@smart_inference_mode()
 def run(
@@ -425,7 +427,8 @@ def Get_Frame(dataset):
         #print(im_global.shape)
         #return im, path, s, im0s, vid_cap
         #return im_global
-        time.sleep(0.50)
+        if time:
+            time.sleep(set_time)
 
 
 
@@ -449,7 +452,8 @@ def model_inference(visualize,save_dir,path,augment):
         sem2.release() #sem2=1
         print("[model_inference] sem2 release done: {}".format(sem2))
         #sem4.release() #sem4=1
-        time.sleep(0.50)
+        if time:
+            time.sleep(set_time)
 
 def nms(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det):
     pred_nms = non_max_suppression(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)
@@ -550,6 +554,7 @@ def Process_Prediction(pred=None,
                     save_path = str(Path(save_path).with_suffix('.mp4'))  # force *.mp4 suffix on results videos
                     vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
                 vid_writer[i].write(im0)
+                
         '''
         Save_Result(save_img=save_img,
                         dataset=dataset,
@@ -616,7 +621,8 @@ def PostProcess(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det,
                             vid_path=vid_path,
                             vid_writer=vid_writer)
         print("3")
-        time.sleep(0.50)
+        if time:
+            time.sleep(set_time_3)
     
     
 
@@ -738,15 +744,15 @@ if __name__ == "__main__":
     #path_global = None
     print("before t1")
     t1 = threading.Thread(target = Get_Frame ,args=(dataset,))
-    #with dt[0]:
-    t1.start()    
+    with dt[0]:
+        t1.start()    
     print("after t1.start()")
     
     #global path_global
     print("before t2")
     t2 = threading.Thread(target = model_inference,args=(visualize,save_dir,path_global,augment,))
-    #with dt[1]:
-    t2.start()
+    with dt[1]:
+        t2.start()
     print("after t2.start()")
     #
     
@@ -776,12 +782,12 @@ if __name__ == "__main__":
                     vid_writer,) )
     
     print("Thread count: {}".format(threading.active_count()))
-    #with dt[2]:
-    t3.start()
+    with dt[2]:
+        t3.start()
     print("after t3.start()")
     
     
-    #t.join()
+    #t1.join()
     #t2.join()
     #t3.join()
     
@@ -842,7 +848,7 @@ if __name__ == "__main__":
                             vid_path=vid_path,
                             vid_writer=vid_writer)
     '''
-    #LOGGER.info(f"{s_global}{(dt[0].dt + dt[1].dt + dt[2].dt) * 1E3:.1f}ms")
+    LOGGER.info(f"{s_global}{(dt[0].dt + dt[1].dt + dt[2].dt) * 1E3:.1f}ms")
         
     '''
     Run_inference(model=model,
