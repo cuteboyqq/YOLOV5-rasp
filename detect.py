@@ -50,9 +50,9 @@ from utils.torch_utils import select_device, smart_inference_mode
 import threading
 import time
 
-time=False
-set_time = 0.025
-set_time_3 = 0.025
+USE_TIME=False
+set_time = 0.1
+set_time_3 = 0.1
 im_global=None
 path_global=None
 im0s_global=None
@@ -65,7 +65,7 @@ sem1 = threading.Semaphore(0)
 sem2 = threading.Semaphore(0)
 sem3 = threading.Semaphore(0)
 sem4 = threading.Semaphore(1)
-
+sem5 = threading.Semaphore(1)
 #@smart_inference_mode()
 def run(
         weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
@@ -232,10 +232,10 @@ def run(
 
 def parse_opt():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--weights', nargs='+', type=str, default=ROOT / 'yolov5s.pt', help='model path(s)')
-    parser.add_argument('--source', type=str, default=ROOT / 'data/images', help='file/dir/URL/glob, 0 for webcam')
-    parser.add_argument('--data', type=str, default=ROOT / 'data/coco128.yaml', help='(optional) dataset.yaml path')
-    parser.add_argument('--imgsz', '--img', '--img-size', nargs='+', type=int, default=[640], help='inference size h,w')
+    parser.add_argument('--weights', nargs='+', type=str, default= r'C:\GitHub_Code\cuteboyqq\YOLO\YOLOV5-rasp\runs\train\f192_2022-12-29-4cls\weights\best.pt', help='model path(s)')
+    parser.add_argument('--source', type=str, default=r'C:\factory_data\Produce_1221_720P_30FPS_SHORT.mp4', help='file/dir/URL/glob, 0 for webcam')
+    parser.add_argument('--data', type=str, default=r'C:\GitHub_Code\cuteboyqq\YOLO\YOLOV5-rasp\data\factory_new2.yaml', help='(optional) dataset.yaml path')
+    parser.add_argument('--imgsz', '--img', '--img-size', nargs='+', type=int, default=[192], help='inference size h,w')
     parser.add_argument('--conf-thres', type=float, default=0.25, help='confidence threshold')
     parser.add_argument('--iou-thres', type=float, default=0.45, help='NMS IoU threshold')
     parser.add_argument('--max-det', type=int, default=1000, help='maximum detections per image')
@@ -410,24 +410,24 @@ def Get_Frame(dataset):
         im = im.half() if model.fp16 else im.float()  # uint8 to fp16/32
         im /= 255  # 0 - 255 to 0.0 - 1.0
         if len(im.shape) == 3:
-            print("im is None")
+            #print("im is None")
             im = im[None]  # expand for batch dim
-        print("im.shape: {}".format(im.shape))
+        #print("im.shape: {}".format(im.shape))
         im_global = im
-        print("im_global shape : {}".format(im_global.shape))
+        #print("im_global shape : {}".format(im_global.shape))
         path_global = path
         im0s_global = im0s
         s_global = s
         vid_cap_global = vid_cap
         
         print("1")
-        print("[Get_Frame]get im done")
+        #print("[Get_Frame]get im done")
         sem1.release() #sem1=1
-        print("[Get_Frame]sem1 after release: {}".format(sem1))
+        #print("[Get_Frame]sem1 after release: {}".format(sem1))
         #print(im_global.shape)
         #return im, path, s, im0s, vid_cap
         #return im_global
-        if time:
+        if USE_TIME:
             time.sleep(set_time)
 
 
@@ -435,6 +435,7 @@ def Get_Frame(dataset):
 def model_inference(visualize,save_dir,path,augment):
     global pred_global
     global model_global
+    global im_global
     while True:
         #print("[model_inference] sem1 befroe acquire: {}".format(sem1))
         sem1.acquire() #sem1=0
@@ -443,16 +444,17 @@ def model_inference(visualize,save_dir,path,augment):
         # Directories
         visualize = increment_path(save_dir / Path(path).stem, mkdir=True) if visualize else False
         pred = model_global(im_global, augment=augment, visualize=visualize)
-    
+        #sem5.acquire() #sem5=0
         pred_global = pred
+        #sem5.release() #sem5=1
         #return pre2
         
         print("2")
-        print("[model_inference] sem2 start release: {}".format(sem2))
+        #print("[model_inference] sem2 start release: {}".format(sem2))
         sem2.release() #sem2=1
-        print("[model_inference] sem2 release done: {}".format(sem2))
+        #print("[model_inference] sem2 release done: {}".format(sem2))
         #sem4.release() #sem4=1
-        if time:
+        if USE_TIME:
             time.sleep(set_time)
 
 def nms(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det):
@@ -589,17 +591,22 @@ def PostProcess(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det,
                 vid_cap,
                 vid_path,
                 vid_writer):
-    global pred_global
+    #global pred_global
     global im0s_global
     global path_global
     global im_global
+    global pred_global
     while True:
-        print("[PostProcess] sem2 before acquire")
+        #print("[PostProcess] sem2 before acquire")
         sem2.acquire() #sem2=0
-        print("[PostProcess] sem2 after acquire")
-        pred_global = nms(pred_global, conf_thres, iou_thres, classes, agnostic_nms, max_det)
-
-        save_path, im0 = Process_Prediction(pred=pred_global,
+        #print("[PostProcess] sem2 after acquire")
+        
+        pred = nms(pred_global, conf_thres, iou_thres, classes, agnostic_nms, max_det)
+        
+        #sem5.acquire() #sem5=0
+        
+        #sem5.release() #sem5=1
+        save_path, im0 = Process_Prediction(pred=pred,
                             source = source,
                             path=path_global,
                             im0s=im0s_global,
@@ -621,7 +628,7 @@ def PostProcess(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det,
                             vid_path=vid_path,
                             vid_writer=vid_writer)
         print("3")
-        if time:
+        if USE_TIME:
             time.sleep(set_time_3)
     
     
@@ -669,11 +676,10 @@ if __name__ == "__main__":
     imgsz = opt.imgsz
     save_conf = opt.save_conf
     nosave = opt.nosave
-    view_img = opt.view_img
+    view_img = True #opt.view_img
     hide_labels = opt.hide_labels
     hide_conf = opt.hide_conf
     source = opt.source
-    
     
     save_img = not nosave and not source.endswith('.txt')  # save inference images
     
@@ -732,7 +738,7 @@ if __name__ == "__main__":
     # Directories
     save_dir = increment_path(Path(project) / name, exist_ok=exist_ok)  # increment run
     (save_dir / 'labels' if save_txt else save_dir).mkdir(parents=True, exist_ok=True)  # make dir
-    model.warmup(imgsz=(1 if pt else bs, 3, *imgsz))  # warmup
+    model_global.warmup(imgsz=(1 if pt else bs, 3, *imgsz))  # warmup
     seen, windows, dt = 0, [], (Profile(), Profile(), Profile())
     
     
