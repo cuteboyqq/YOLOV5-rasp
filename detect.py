@@ -400,7 +400,7 @@ def Get_Frame(dataset):
         
         #for path, im, im0s, vid_cap, s in dataset:
             
-        #sem4.acquire() #sem4=0
+        sem4.acquire() #sem4=0
             #for path, im, im0s, vid_cap, s in dataset:
             #path, im, im0s, vid_cap, s = dataset
         
@@ -453,7 +453,7 @@ def model_inference(visualize,save_dir,path,augment):
         #print("[model_inference] sem2 start release: {}".format(sem2))
         sem2.release() #sem2=1
         #print("[model_inference] sem2 release done: {}".format(sem2))
-        #sem4.release() #sem4=1
+        sem4.release() #sem4=1
         if USE_TIME:
             time.sleep(set_time)
 
@@ -553,8 +553,8 @@ def Process_Prediction(pred=None,
                         h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
                     else:  # stream
                         fps, w, h = 30, im0.shape[1], im0.shape[0]
-                    save_path = str(Path(save_path).with_suffix('.mp4'))  # force *.mp4 suffix on results videos
-                    vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
+                    save_path = str(Path(save_path).with_suffix('.avi'))  # force *.mp4 suffix on results videos
+                    vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'XVID'), fps, (w, h))
                 vid_writer[i].write(im0)
                 
         '''
