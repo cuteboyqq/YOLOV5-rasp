@@ -439,6 +439,7 @@ def model_inference(visualize,save_dir,path,augment):
     while True:
         #print("[model_inference] sem1 befroe acquire: {}".format(sem1))
         sem1.acquire() #sem1=0
+        #sem5.acquire()
         #print("[model_inference] sem1 after acquire: {}".format(sem1))
         
         # Directories
@@ -628,6 +629,7 @@ def PostProcess(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det,
                             vid_path=vid_path,
                             vid_writer=vid_writer)
         print("3")
+        #sem5.release()
         if USE_TIME:
             time.sleep(set_time_3)
     
