@@ -445,9 +445,9 @@ def model_inference(visualize,save_dir,path,augment):
         # Directories
         visualize = increment_path(save_dir / Path(path).stem, mkdir=True) if visualize else False
         pred = model_global(im_global, augment=augment, visualize=visualize)
-        #sem5.acquire() #sem5=0
+      
         pred_global = pred
-        #sem5.release() #sem5=1
+      
         #return pre2
         
         print("2")
@@ -604,9 +604,6 @@ def PostProcess(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det,
         
         pred = nms(pred_global, conf_thres, iou_thres, classes, agnostic_nms, max_det)
         
-        #sem5.acquire() #sem5=0
-        
-        #sem5.release() #sem5=1
         save_path, im0 = Process_Prediction(pred=pred,
                             source = source,
                             path=path_global,
