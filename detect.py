@@ -49,9 +49,10 @@ from utils.torch_utils import select_device, smart_inference_mode
 
 import threading
 import time
-
+USE_SEM4=True
 USE_TIME=False
-set_time = 0.1
+set_time = 0.05
+set_time_1 = 0.01
 set_time_3 = 0.1
 im_global=None
 path_global=None
@@ -232,9 +233,9 @@ def run(
 
 def parse_opt():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--weights', nargs='+', type=str, default= r'C:\GitHub_Code\cuteboyqq\YOLO\YOLOV5-rasp\runs\train\f192_2022-12-29-4cls\weights\best.pt', help='model path(s)')
-    parser.add_argument('--source', type=str, default=r'C:\factory_data\Produce_1221_720P_30FPS_SHORT.mp4', help='file/dir/URL/glob, 0 for webcam')
-    parser.add_argument('--data', type=str, default=r'C:\GitHub_Code\cuteboyqq\YOLO\YOLOV5-rasp\data\factory_new2.yaml', help='(optional) dataset.yaml path')
+    parser.add_argument('--weights', nargs='+', type=str, default= '/home/ali/GitHub_Code/cuteboyqq/YOLO/YOLOV5-rasp/runs/train/f192_2022-12-29-4cls/weights/best.pt', help='model path(s)')
+    parser.add_argument('--source', type=str, default=r'/home/ali/factory_video/Produce_1215_720P_30FPS_RASPSCREEN.mp4', help='file/dir/URL/glob, 0 for webcam')
+    parser.add_argument('--data', type=str, default=r'/home/ali/GitHub_Code/cuteboyqq/YOLO/YOLOV5-rasp/data/factory_new2.yaml', help='(optional) dataset.yaml path')
     parser.add_argument('--imgsz', '--img', '--img-size', nargs='+', type=int, default=[192], help='inference size h,w')
     parser.add_argument('--conf-thres', type=float, default=0.25, help='confidence threshold')
     parser.add_argument('--iou-thres', type=float, default=0.45, help='NMS IoU threshold')
@@ -399,11 +400,12 @@ def Get_Frame(dataset):
     while True:
         
         #for path, im, im0s, vid_cap, s in dataset:
-            
-        sem4.acquire() #sem4=0
+        if USE_SEM4:    
+            sem4.acquire() #sem4=0
             #for path, im, im0s, vid_cap, s in dataset:
             #path, im, im0s, vid_cap, s = dataset
-        
+        get_frame_time = time.time()
+
         data = dataset.__next__()
         path, im, im0s, vid_cap, s = data
         im = torch.from_numpy(im).to(device)
@@ -421,14 +423,16 @@ def Get_Frame(dataset):
         vid_cap_global = vid_cap
         
         print("1")
+        during_get_frame_time = time.time() - get_frame_time
+        print("during_get_frame_time : {}".format(during_get_frame_time*1000))
         #print("[Get_Frame]get im done")
         sem1.release() #sem1=1
         #print("[Get_Frame]sem1 after release: {}".format(sem1))
         #print(im_global.shape)
         #return im, path, s, im0s, vid_cap
         #return im_global
-        if USE_TIME:
-            time.sleep(set_time)
+        #if USE_TIME:
+        time.sleep(set_time_1)
 
 
 
@@ -441,7 +445,7 @@ def model_inference(visualize,save_dir,path,augment):
         sem1.acquire() #sem1=0
         #sem5.acquire()
         #print("[model_inference] sem1 after acquire: {}".format(sem1))
-        
+        model_inference_time = time.time()
         # Directories
         visualize = increment_path(save_dir / Path(path).stem, mkdir=True) if visualize else False
         pred = model_global(im_global, augment=augment, visualize=visualize)
@@ -451,12 +455,15 @@ def model_inference(visualize,save_dir,path,augment):
         #return pre2
         
         print("2")
+        during_model_inference = time.time() - model_inference_time
+        print("during_model_inference : {}".format(during_model_inference*1000))
         #print("[model_inference] sem2 start release: {}".format(sem2))
         sem2.release() #sem2=1
         #print("[model_inference] sem2 release done: {}".format(sem2))
-        sem4.release() #sem4=1
-        if USE_TIME:
-            time.sleep(set_time)
+        if USE_SEM4:
+            sem4.release() #sem4=1
+        #if USE_TIME:
+        time.sleep(set_time)
 
 def nms(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det):
     pred_nms = non_max_suppression(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)
@@ -602,6 +609,9 @@ def PostProcess(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det,
         sem2.acquire() #sem2=0
         #print("[PostProcess] sem2 after acquire")
         
+        post_process_time = time.time()
+        
+        
         pred = nms(pred_global, conf_thres, iou_thres, classes, agnostic_nms, max_det)
         
         save_path, im0 = Process_Prediction(pred=pred,
@@ -626,6 +636,9 @@ def PostProcess(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det,
                             vid_path=vid_path,
                             vid_writer=vid_writer)
         print("3")
+        
+        during_post_process = time.time() - post_process_time
+        print("during_post_process : {}".format(during_post_process*1000))
         #sem5.release()
         if USE_TIME:
             time.sleep(set_time_3)
