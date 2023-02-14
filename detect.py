@@ -50,10 +50,12 @@ from utils.torch_utils import select_device, smart_inference_mode
 import threading
 import time
 USE_SEM4=True
+USE_SEM5=False
 USE_TIME=False
-set_time = 0.05
-set_time_1 = 0.01
-set_time_3 = 0.1
+FPS_SET=25
+set_time_2 = 0.001
+set_time_1 = 0.001
+set_time_3 = 0.001
 im_global=None
 path_global=None
 im0s_global=None
@@ -214,8 +216,8 @@ def run(
                             h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
                         else:  # stream
                             fps, w, h = 30, im0.shape[1], im0.shape[0]
-                        save_path = str(Path(save_path).with_suffix('.mp4'))  # force *.mp4 suffix on results videos
-                        vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
+                        save_path = str(Path(save_path).with_suffix('.avi'))  # force *.mp4 suffix on results videos
+                        vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'XVID'), fps, (w, h))
                     vid_writer[i].write(im0)
 
         # Print time (inference-only)
@@ -404,8 +406,9 @@ def Get_Frame(dataset):
             sem4.acquire() #sem4=0
             #for path, im, im0s, vid_cap, s in dataset:
             #path, im, im0s, vid_cap, s = dataset
+        
         get_frame_time = time.time()
-
+        
         data = dataset.__next__()
         path, im, im0s, vid_cap, s = data
         im = torch.from_numpy(im).to(device)
@@ -423,16 +426,18 @@ def Get_Frame(dataset):
         vid_cap_global = vid_cap
         
         print("1")
-        during_get_frame_time = time.time() - get_frame_time
-        print("during_get_frame_time : {}".format(during_get_frame_time*1000))
+        
+        during_get_frame = time.time() - get_frame_time
+        print("during_get_frame : {} ms".format(during_get_frame*1000))
+        
         #print("[Get_Frame]get im done")
         sem1.release() #sem1=1
         #print("[Get_Frame]sem1 after release: {}".format(sem1))
         #print(im_global.shape)
         #return im, path, s, im0s, vid_cap
         #return im_global
-        #if USE_TIME:
-        time.sleep(set_time_1)
+        if USE_TIME:
+            time.sleep(set_time_1)
 
 
 
@@ -442,28 +447,38 @@ def model_inference(visualize,save_dir,path,augment):
     global im_global
     while True:
         #print("[model_inference] sem1 befroe acquire: {}".format(sem1))
+        model_inference_time = time.time()
         sem1.acquire() #sem1=0
+        if USE_SEM5:
+            sem5.acquire()
         #sem5.acquire()
         #print("[model_inference] sem1 after acquire: {}".format(sem1))
-        model_inference_time = time.time()
+        
         # Directories
         visualize = increment_path(save_dir / Path(path).stem, mkdir=True) if visualize else False
         pred = model_global(im_global, augment=augment, visualize=visualize)
       
         pred_global = pred
+        
+        #pred_global.append(pred)
       
         #return pre2
         
         print("2")
+        
         during_model_inference = time.time() - model_inference_time
-        print("during_model_inference : {}".format(during_model_inference*1000))
+        print("during_model_inference : {} ms".format(during_model_inference*1000))
+        
+        if USE_TIME:
+            time.sleep(set_time_2)
+        
         #print("[model_inference] sem2 start release: {}".format(sem2))
         sem2.release() #sem2=1
         #print("[model_inference] sem2 release done: {}".format(sem2))
         if USE_SEM4:
             sem4.release() #sem4=1
-        #if USE_TIME:
-        time.sleep(set_time)
+        #
+        
 
 def nms(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det):
     pred_nms = non_max_suppression(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)
@@ -492,6 +507,9 @@ def Process_Prediction(pred=None,
                        vid_path=None,
                        vid_writer=None):
     
+    
+    global vid_cap_global
+    
     seen, windows = 0, []
     is_url = source.lower().startswith(('rtsp://', 'rtmp://', 'http://', 'https://'))
     is_file = Path(source).suffix[1:] in (IMG_FORMATS + VID_FORMATS)
@@ -500,7 +518,7 @@ def Process_Prediction(pred=None,
         seen += 1
         if webcam:  # batch_size >= 1
             p, im0, frame = path[i], im0s[i].copy(), dataset.count
-            s += f'{i}: '
+            #s += f'{i}: '
         else:
             p, im0, frame = path, im0s.copy(), getattr(dataset, 'frame', 0)
 
@@ -537,16 +555,29 @@ def Process_Prediction(pred=None,
 
         # Stream results
         im0 = annotator.result()
+        #print("im0 : {}".format(im0.shape))
+        #print("[Process_Prediction]before view img {}".format(view_img))
+        
         if view_img:
             if platform.system() == 'Linux' and p not in windows:
+                #print("[Process_Prediction] in if ")
                 windows.append(p)
                 cv2.namedWindow(str(p), cv2.WINDOW_NORMAL | cv2.WINDOW_KEEPRATIO)  # allow window resize (Linux)
+                #cv2.namedWindow("test")  # allow window resize (Linux)
                 cv2.resizeWindow(str(p), im0.shape[1], im0.shape[0])
+                #cv2.resizeWindow("test", im0.shape[1], im0.shape[0])
+                #print("[Process_Prediction] end if ")
+            #print("[Process_Prediction] before imshow")
             cv2.imshow(str(p), im0)
+            #cv2.imshow("test", im0)
             cv2.waitKey(1)  # 1 millisecond
+            #print("[Process_Prediction] after imshow")
+        #print("[Process_Prediction]after view img")
+        
     #raise NotImplemented
     # Print time (inference-only)
         # Save results (image with detections)
+        save_img_time = time.time()
         if save_img:
             if dataset.mode == 'image':
                 cv2.imwrite(save_path, im0)
@@ -557,14 +588,20 @@ def Process_Prediction(pred=None,
                         vid_writer[i].release()  # release previous video writer
                     if vid_cap:  # video
                         fps = vid_cap.get(cv2.CAP_PROP_FPS)
+                        #w = 1280
+                        #h = 720
                         w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
                         h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
                     else:  # stream
-                        fps, w, h = 30, im0.shape[1], im0.shape[0]
+                        fps, w, h = FPS_SET, im0.shape[1], im0.shape[0]
+                        #fps, w, h = 20, 1280,720
                     save_path = str(Path(save_path).with_suffix('.avi'))  # force *.mp4 suffix on results videos
-                    vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'XVID'), fps, (w, h))
+                    #vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'XVID'), fps, (w, h))
+                    vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc('H', '2', '6', '4'), fps, (w, h),True)
                 vid_writer[i].write(im0)
-                
+        
+        during_save_img = time.time() - save_img_time
+        print("[Process_Prediction]during_save_img: {} ms".format(during_save_img*1000))        
         '''
         Save_Result(save_img=save_img,
                         dataset=dataset,
@@ -604,16 +641,22 @@ def PostProcess(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det,
     global path_global
     global im_global
     global pred_global
+    
+    #cv2.namedWindow("test", cv2.WINDOW_NORMAL | cv2.WINDOW_KEEPRATIO)  # allow window resize (Linux)
+    #cv2.resizeWindow("test", im0.shape[1], im0.shape[0])
+    #pred_global_new = pred_global.reverse()
     while True:
         #print("[PostProcess] sem2 before acquire")
+        post_process_time = time.time()
         sem2.acquire() #sem2=0
         #print("[PostProcess] sem2 after acquire")
         
-        post_process_time = time.time()
-        
-        
+        #print("[PostProcess] before nms")
         pred = nms(pred_global, conf_thres, iou_thres, classes, agnostic_nms, max_det)
+        #print("[PostProcess] after nms")
+        #print("pred : {}".format(pred))
         
+        #print("[PostProcess] before Process_Prediction")
         save_path, im0 = Process_Prediction(pred=pred,
                             source = source,
                             path=path_global,
@@ -635,11 +678,13 @@ def PostProcess(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det,
                             vid_cap=vid_cap,
                             vid_path=vid_path,
                             vid_writer=vid_writer)
+        #print("[PostProcess] after Process_Prediction")
         print("3")
         
         during_post_process = time.time() - post_process_time
-        print("during_post_process : {}".format(during_post_process*1000))
-        #sem5.release()
+        print("during_post_process: {} ms".format(during_post_process*1000))
+        if USE_SEM5:
+            sem5.release()
         if USE_TIME:
             time.sleep(set_time_3)
     
@@ -688,7 +733,7 @@ if __name__ == "__main__":
     imgsz = opt.imgsz
     save_conf = opt.save_conf
     nosave = opt.nosave
-    view_img = True #opt.view_img
+    view_img = False #opt.view_img
     hide_labels = opt.hide_labels
     hide_conf = opt.hide_conf
     source = opt.source
@@ -805,9 +850,9 @@ if __name__ == "__main__":
     print("after t3.start()")
     
     
-    #t1.join()
-    #t2.join()
-    #t3.join()
+    t1.join()
+    t2.join()
+    t3.join()
     
     
     '''
