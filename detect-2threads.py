@@ -387,6 +387,90 @@ def Run_inference(model='',
         
     #raise NotImplemented
 
+def Get_Frame_and_model_Inference(dataset,
+                                  visualize,save_dir,path,augment):
+    global im_global
+    global path_global
+    global im0s_global
+    global s_global
+    global vid_cap_global
+    global pred_global
+    global model_global
+    global im_global
+    #path, im, im0s, vid_cap, s = dataset
+    #print(dataset)
+    dataset.__iter__()
+    while True:
+        
+        #for path, im, im0s, vid_cap, s in dataset:
+        #if USE_SEM4:    
+            #sem4.acquire() #sem4=0
+            #for path, im, im0s, vid_cap, s in dataset:
+            #path, im, im0s, vid_cap, s = dataset
+        
+        get_frame_time = time.time()
+        
+        data = dataset.__next__()
+        path, im, im0s, vid_cap, s = data
+        im = torch.from_numpy(im).to(device)
+        im = im.half() if model.fp16 else im.float()  # uint8 to fp16/32
+        im /= 255  # 0 - 255 to 0.0 - 1.0
+        if len(im.shape) == 3:
+            #print("im is None")
+            im = im[None]  # expand for batch dim
+        #print("im.shape: {}".format(im.shape))
+        im_global = im
+        #print("im_global shape : {}".format(im_global.shape))
+        path_global = path
+        im0s_global = im0s
+        s_global = s
+        vid_cap_global = vid_cap
+        
+        print("1")
+        
+        during_get_frame = time.time() - get_frame_time
+        print("during_get_frame : {} ms".format(during_get_frame*1000))
+        #sem1.release() #sem1=1
+        #print("[Get_Frame]get im done")
+        #print("[Get_Frame]sem1 after release: {}".format(sem1))
+        #print(im_global.shape)
+        #return im, path, s, im0s, vid_cap
+        #return im_global
+        if USE_TIME:
+            time.sleep(set_time_1)
+            
+        #sem1.acquire() #sem1=0
+        #if USE_SEM5:
+            #sem5.acquire()
+        #sem5.acquire()
+        #print("[model_inference] sem1 after acquire: {}".format(sem1))
+        model_inference_time = time.time()
+        # Directories
+        visualize = increment_path(save_dir / Path(path).stem, mkdir=True) if visualize else False
+        pred = model_global(im_global, augment=augment, visualize=visualize)
+      
+        #pred_global = pred
+        
+        #pred_list.append(pred)
+        pred_global = pred
+        #print("[model_inference]pred_global = {}".format(pred_global))
+        #return pre2
+        
+        print("2")
+        
+        during_model_inference = time.time() - model_inference_time
+        print("during_model_inference : {} ms".format(during_model_inference*1000))
+        
+        if USE_TIME:
+            time.sleep(set_time_2)
+        
+        #print("[model_inference] sem2 start release: {}".format(sem2))
+        sem2.release() #sem2=1
+        #print("[model_inference] sem2 release done: {}".format(sem2))
+        #if USE_SEM4:
+            #sem4.release() #sem4=1
+            
+            
 
 def Get_Frame(dataset):
     
@@ -822,6 +906,7 @@ if __name__ == "__main__":
     print("threading.enumerate() :{}".format(threading.enumerate() ))
     #for path, im, im0s, vid_cap, s in dataset:
     #path_global = None
+    '''
     print("before t1")
     t1 = threading.Thread(target = Get_Frame ,args=(dataset,))
     with dt[0]:
@@ -835,7 +920,12 @@ if __name__ == "__main__":
         t2.start()
     print("after t2.start()")
     #
-    
+    '''
+    print("before t1")
+    t1 = threading.Thread(target = Get_Frame_and_model_Inference ,args=(dataset,visualize,save_dir,path_global,augment,))
+    with dt[0]:
+        t1.start()    
+    print("after t1.start()")
     
     
     print("before t3")
