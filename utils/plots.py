@@ -9,7 +9,7 @@ import os
 from copy import copy
 from pathlib import Path
 from urllib.error import URLError
-
+from datetime import datetime
 import cv2
 import matplotlib
 import matplotlib.pyplot as plt
@@ -82,7 +82,22 @@ class Annotator:
         else:  # use cv2
             self.im = im
         self.lw = line_width or max(round(sum(im.shape) / 2 * 0.003), 2)  # line width
-
+    
+    def time_label(self,color=(128, 128, 128), txt_color=(0, 0, 255)):
+        tf = max(self.lw - 1, 1)  # font thickness
+        now = datetime.now()
+        s_time = datetime.strftime(now,'%y-%m-%d %H:%M:%S')
+        s_time = str(s_time)
+        if self.pil:
+            self.draw.text((50,320), s_time, fill=txt_color, font=self.font)
+        else:
+            cv2.putText(self.im,
+                        s_time, (50,320),0,
+                        self.lw / 3,
+                        txt_color,
+                        thickness=4,
+                        lineType=cv2.LINE_AA)
+    
     def box_label(self, box, label='', color=(128, 128, 128), txt_color=(255, 255, 255)):
         # Add one xyxy box to image with label
         if self.pil or not is_ascii(label):
