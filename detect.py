@@ -33,6 +33,7 @@ from pathlib import Path
 
 import torch
 import torch.backends.cudnn as cudnn
+from datetime import datetime
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # YOLOv5 root directory
@@ -52,7 +53,7 @@ import time
 USE_SEM4=True
 USE_SEM5=False
 USE_TIME=False
-FPS_SET=25
+FPS_SET=35
 set_time_2 = 0.001
 set_time_1 = 0.001
 set_time_3 = 0.001
@@ -63,7 +64,7 @@ s_global=None
 vid_cap_global=None
 pred_global=None
 model_global=None
-
+anomaly_img_count=0
 sem1 = threading.Semaphore(0)
 sem2 = threading.Semaphore(0)
 sem3 = threading.Semaphore(0)
@@ -175,7 +176,7 @@ def run(
                 for c in det[:, -1].unique():
                     n = (det[:, -1] == c).sum()  # detections per class
                     s += f"{n} {names[int(c)]}{'s' * (n > 1)}, "  # add to string
-
+                annotator.time_label()
                 # Write results
                 for *xyxy, conf, cls in reversed(det):
                     if save_txt:  # Write to file
@@ -188,6 +189,7 @@ def run(
                         c = int(cls)  # integer class
                         label = None if hide_labels else (names[c] if hide_conf else f'{names[c]} {conf:.2f}')
                         annotator.box_label(xyxy, label, color=colors(c, True))
+                        annotator.time_label()
                     if save_crop:
                         save_one_box(xyxy, imc, file=save_dir / 'crops' / names[c] / f'{p.stem}.jpg', BGR=True)
 
@@ -387,6 +389,159 @@ def Run_inference(model='',
         
     #raise NotImplemented
 
+def Get_Frame_and_model_Inference(dataset,
+                                  visualize,save_dir,path,augment):
+    global im_global
+    global path_global
+    global im0s_global
+    global s_global
+    global vid_cap_global
+    global pred_global
+    global model_global
+    global im_global
+    #path, im, im0s, vid_cap, s = dataset
+    #print(dataset)
+    dataset.__iter__()
+    while True:
+        
+        #for path, im, im0s, vid_cap, s in dataset:
+        #if USE_SEM4:    
+            #sem4.acquire() #sem4=0
+            #for path, im, im0s, vid_cap, s in dataset:
+            #path, im, im0s, vid_cap, s = dataset
+        
+        get_frame_time = time.time()
+        
+        data = dataset.__next__()
+        path, im, im0s, vid_cap, s = data
+        
+        raw_im = im
+        
+        im = torch.from_numpy(im).to(device)
+        im = im.half() if model.fp16 else im.float()  # uint8 to fp16/32
+        im /= 255  # 0 - 255 to 0.0 - 1.0
+        if len(im.shape) == 3:
+            #print("im is None")
+            im = im[None]  # expand for batch dim
+        #print("im.shape: {}".format(im.shape))
+        im_global = im
+        #print("im_global shape : {}".format(im_global.shape))
+        path_global = path
+        im0s_global = im0s
+        s_global = s
+        vid_cap_global = vid_cap
+        
+        print("1")
+        
+        during_get_frame = time.time() - get_frame_time
+        print("during_get_frame : {} ms".format(during_get_frame*1000))
+        #sem1.release() #sem1=1
+        #print("[Get_Frame]get im done")
+        #print("[Get_Frame]sem1 after release: {}".format(sem1))
+        #print(im_global.shape)
+        #return im, path, s, im0s, vid_cap
+        #return im_global
+        if USE_TIME:
+            time.sleep(set_time_1)
+            
+        #sem1.acquire() #sem1=0
+        #if USE_SEM5:
+            #sem5.acquire()
+        #sem5.acquire()
+        #print("[model_inference] sem1 after acquire: {}".format(sem1))
+        model_inference_time = time.time()
+        # Directories
+        visualize = increment_path(save_dir / Path(path).stem, mkdir=True) if visualize else False
+        pred = model_global(im_global, augment=augment, visualize=visualize)
+      
+        #pred_global = pred
+        
+        #pred_list.append(pred)
+        pred_global = pred
+        #print("[model_inference]pred_global = {}".format(pred_global))
+        #return pre2
+        
+        print("2")
+        
+        during_model_inference = time.time() - model_inference_time
+        print("during_model_inference : {} ms".format(during_model_inference*1000))
+        
+        SAVE_RAW_STREAM = False
+        if SAVE_RAW_STREAM:
+            #===========================================save raw stream ==============================================================
+            save_img_time = time.time()
+            output_path = '/home/ali/Desktop/2023-02-20.avi'
+            '''
+            vc = cv2.VideoCapture(s)
+            
+            vc.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+            vc.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+            #frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            w = int(vc.get(cv2.CAP_PROP_FRAME_WIDTH))
+            h = int(vc.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            fps = vc.get(cv2.CAP_PROP_FPS)
+            print("w : {}, h:{}".format(w,h))
+            ret, frame = vc.read()
+            '''
+            
+            
+            if vid_cap:  # video
+                fps = vid_cap.get(cv2.CAP_PROP_FPS)
+                #w = 1280
+                #h = 720
+                w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            else:  # stream
+                fps, w, h = FPS_SET, raw_im.shape[2], raw_im.shape[3]
+                #fps, w, h = 20, 1280,720
+                print("w : {}, h:{}".format(w,h))
+            
+            #vid_cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+            #vid_cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+            #ret, frame = vc.read()
+            #frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            #w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            #h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            #fps = vid_cap.get(cv2.CAP_PROP_FPS)
+            '''
+            if platform.system() == 'Linux':
+                #print("[Process_Prediction] in if ")
+                #windows.append(p)
+                cv2.namedWindow('raw_im', cv2.WINDOW_NORMAL | cv2.WINDOW_KEEPRATIO)  # allow window resize (Linux)
+                #cv2.namedWindow("test")  # allow window resize (Linux)
+                cv2.resizeWindow('raw_im', raw_im.shape[1], raw_im.shape[0])
+                cv2.imshow('raw_im', raw_im)
+                cv2.waitKey(1)  # 1 millisecond
+            '''
+            fourcc = cv2.VideoWriter_fourcc('H', '2', '6', '4')
+            # fourcc = cv2.VideoWriter_fourcc('X', 'V', 'I', 'D')
+            # fourcc = cv2.VideoWriter_fourcc('H', 'E', 'V', 'C')
+            vw = cv2.VideoWriter('/home/ali/Desktop/2023-02-20.avi', fourcc, fps, (w, h), True)
+            #while ret:
+            vw.write(raw_im)
+                #ret, frame = vc.read()
+                #frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                #cv2.imshow('frame', frame)
+                #if cv2.waitKey(5) & 0xFF == ord('q'):
+                    #cv2.destroyAllWindows()
+                    #return -1
+
+                    
+            during_save_img = time.time() - save_img_time
+            print("[Get_Frame_and_model_Inference]during_save_img: {} ms".format(during_save_img*1000))
+            #==========================================================================================================================
+        
+        
+        if USE_TIME:
+            time.sleep(set_time_2)
+        
+        #print("[model_inference] sem2 start release: {}".format(sem2))
+        sem2.release() #sem2=1
+        #print("[model_inference] sem2 release done: {}".format(sem2))
+        #if USE_SEM4:
+            #sem4.release() #sem4=1
+            
+            
 
 def Get_Frame(dataset):
     
@@ -514,7 +669,9 @@ def Process_Prediction(pred=None,
     
     
     #global vid_cap_global
-    
+    save_anomaly_img = False
+    global anomaly_img_count
+    anomaly_img_count+=1
     seen, windows = 0, []
     is_url = source.lower().startswith(('rtsp://', 'rtmp://', 'http://', 'https://'))
     is_file = Path(source).suffix[1:] in (IMG_FORMATS + VID_FORMATS)
@@ -543,7 +700,8 @@ def Process_Prediction(pred=None,
             for c in det[:, -1].unique():
                 n = (det[:, -1] == c).sum()  # detections per class
                 #s += f"{n} {names[int(c)]}{'s' * (n > 1)}, "  # add to string
-
+            #Alister add 2023-02-21 add time label
+            annotator.time_label()
             # Write results
             for *xyxy, conf, cls in reversed(det):
                 if save_txt:  # Write to file
@@ -551,7 +709,14 @@ def Process_Prediction(pred=None,
                     line = (cls, *xywh, conf) if save_conf else (cls, *xywh)  # label format
                     with open(f'{txt_path}.txt', 'a') as f:
                         f.write(('%g ' * len(line)).rstrip() % line + '\n')
-
+                #Alister add 2023-02-21    save anomaly images    
+                c = int(cls)  # integer class
+                if c==1 and conf<0.60:
+                    save_anomaly_img = True
+                    now = datetime.now()
+                    s_time = datetime.strftime(now,'%y_%m_%d_%H_%M_%S')
+                    #anomaly_img_count+=1
+                    
                 if save_img or save_crop or view_img:  # Add bbox to image
                     c = int(cls)  # integer class
                     label = None if hide_labels else (names[c] if hide_conf else f'{names[c]} {conf:.2f}')
@@ -584,11 +749,21 @@ def Process_Prediction(pred=None,
     #raise NotImplemented
     # Print time (inference-only)
         # Save results (image with detections)
+        
         save_img_time = time.time()
         if save_img:
             if dataset.mode == 'image':
                 cv2.imwrite(save_path, im0)
             else:  # 'video' or 'stream'
+                if save_anomaly_img:
+                    img_dir = os.path.dirname(save_path)
+                    img_name = s_time + '.jpg'
+                    folder_name = 'anomaly_img'
+                    if not os.path.exists(os.path.join(img_dir,folder_name)):
+                        os.makedirs(os.path.join(img_dir,folder_name))
+                    img_path = os.path.join(img_dir,folder_name,img_name)
+                    im0_resize = cv2.resize(im0,(1280,720))
+                    cv2.imwrite(img_path, im0_resize)
                 if vid_path[i] != save_path:  # new video
                     vid_path[i] = save_path
                     if isinstance(vid_writer[i], cv2.VideoWriter):
@@ -608,7 +783,8 @@ def Process_Prediction(pred=None,
                 vid_writer[i].write(im0)
         
         during_save_img = time.time() - save_img_time
-        print("[Process_Prediction]during_save_img: {} ms".format(during_save_img*1000))        
+        print("[Process_Prediction]during_save_img: {} ms".format(during_save_img*1000))
+        
         '''
         Save_Result(save_img=save_img,
                         dataset=dataset,
@@ -822,6 +998,7 @@ if __name__ == "__main__":
     print("threading.enumerate() :{}".format(threading.enumerate() ))
     #for path, im, im0s, vid_cap, s in dataset:
     #path_global = None
+    '''
     print("before t1")
     t1 = threading.Thread(target = Get_Frame ,args=(dataset,))
     with dt[0]:
@@ -835,7 +1012,12 @@ if __name__ == "__main__":
         t2.start()
     print("after t2.start()")
     #
-    
+    '''
+    print("before t1")
+    t1 = threading.Thread(target = Get_Frame_and_model_Inference ,args=(dataset,visualize,save_dir,path_global,augment,))
+    with dt[0]:
+        t1.start()    
+    print("after t1.start()")
     
     
     print("before t3")
@@ -928,7 +1110,7 @@ if __name__ == "__main__":
                             vid_path=vid_path,
                             vid_writer=vid_writer)
     '''
-    LOGGER.info(f"{s_global}{(dt[0].dt + dt[1].dt + dt[2].dt) * 1E3:.1f}ms")
+    #LOGGER.info(f"{s_global}{(dt[0].dt + dt[1].dt + dt[2].dt) * 1E3:.1f}ms")
         
     '''
     Run_inference(model=model,
