@@ -700,6 +700,44 @@ def Process_Prediction(pred=None,
             for c in det[:, -1].unique():
                 n = (det[:, -1] == c).sum()  # detections per class
                 #s += f"{n} {names[int(c)]}{'s' * (n > 1)}, "  # add to string
+            #Alister add 2023-02-21 filter line label
+            #===========================================================================================================================================================
+            filter_line_label = False
+            X_TH = 200
+            Y_TH = 200
+            frontline_x = None
+            frontline_y = None
+            
+            line_x = None
+            line_y = None
+            #Filter line overlapped with frontline
+            start_filter_line = time.time()
+            #==========================================Filter line======================================================================================================
+            for *xyxy, conf, cls in reversed(det):
+                xyxy = torch.tensor(xyxy).view(-1, 4)
+                b = xyxy2xywh(xyxy).long()  # boxes
+                c = int(cls)  # integer class
+                
+                if c==3 or c==2 or c==1: #front line or others or noline
+                    frontline_x = b[0,0]
+                    frontline_y = b[0,1]
+                if c==0: #line
+                    line_x = b[0,0]
+                    line_y = b[0,1]
+                
+                if not line_x==None  and not line_y==None and not frontline_x==None:
+                    x_distance =  abs(frontline_x-line_x)
+                    y_distance =  abs(frontline_y-line_y)
+                    print("x_distance : {}".format(x_distance))
+                    print("y_distance : {}".format(y_distance))
+                    #input()
+                    if float(x_distance) < X_TH and float(y_distance) < Y_TH:
+                        filter_line_label = True
+                        print("filter_line_label filter_line_labelfilter_line_labelfilter_line_labelfilter_line_labelfilter_line_labelfilter_line_labelfilter_line_labelfilter_line_labelfilter_line_labelfilter_line_labelfilter_line_labelfilter_line_labelfilter_line_labelfilter_line_labelfilter_line_labelfilter_line_labelfilter_line_labelfilter_line_labelfiltelfilter_line_labelfilter_line_label: {}".format(filter_line_label))
+                        #input()
+            print("filter_line_label : {}".format(filter_line_label))
+            #===============================================================================================================================================
+                
             #Alister add 2023-02-21 add time label
             annotator.time_label()
             # Write results
@@ -711,16 +749,23 @@ def Process_Prediction(pred=None,
                         f.write(('%g ' * len(line)).rstrip() % line + '\n')
                 #Alister add 2023-02-21    save anomaly images    
                 c = int(cls)  # integer class
-                if c==1 and conf<0.60:
+                if c==0 and conf<0.70 and filter_line_label==False:
                     save_anomaly_img = True
                     now = datetime.now()
-                    s_time = datetime.strftime(now,'%y_%m_%d_%H_%M_%S')
+                    s_time = datetime.strftime(now,'%y-%m-%d-%H-%M-%S')
                     #anomaly_img_count+=1
                     
                 if save_img or save_crop or view_img:  # Add bbox to image
                     c = int(cls)  # integer class
                     label = None if hide_labels else (names[c] if hide_conf else f'{names[c]} {conf:.2f}')
-                    annotator.box_label(xyxy, label, color=colors(c, True))
+                    #annotator.box_label(xyxy, label, color=colors(c, True))
+                    if c==0 and filter_line_label==False:
+                        if conf<0.70:
+                            annotator.box_label(xyxy, label+" anomaly" , color=(0,0,255))
+                        else:
+                            annotator.box_label(xyxy, label+" normal" , color=(255,0,0))
+                    elif not c==0:
+                        annotator.box_label(xyxy, label, color=colors(c, True))
                 if save_crop:
                     save_one_box(xyxy, imc, file=save_dir / 'crops' / names[c] / f'{p.stem}.jpg', BGR=True)
 
