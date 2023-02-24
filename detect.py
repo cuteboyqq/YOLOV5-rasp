@@ -50,10 +50,13 @@ from utils.torch_utils import select_device, smart_inference_mode
 
 import threading
 import time
+import numpy as np
 USE_SEM4=True
 USE_SEM5=False
 USE_TIME=False
-FPS_SET=35
+FPS_SET=22
+SET_W=1600
+SET_H=900
 set_time_2 = 0.001
 set_time_1 = 0.001
 set_time_3 = 0.001
@@ -794,12 +797,42 @@ def Process_Prediction(pred=None,
     #raise NotImplemented
     # Print time (inference-only)
         # Save results (image with detections)
-        
+        #print("save img : {}".format(save_img))
         save_img_time = time.time()
         if save_img:
             if dataset.mode == 'image':
                 cv2.imwrite(save_path, im0)
             else:  # 'video' or 'stream'
+                
+                if vid_path[i] != save_path:  # new video
+                    vid_path[i] = save_path
+                    if isinstance(vid_writer[i], cv2.VideoWriter):
+                        vid_writer[i].release()  # release previous video writer
+                    if vid_cap:  # video
+                        fps = vid_cap.get(cv2.CAP_PROP_FPS)
+                        vid_cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1600)
+                        vid_cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 900)
+                        w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                        h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                        print("vidcap w:{} h:{}".format(w,h))
+                    else:  # stream
+                        fps, w, h = FPS_SET, im0.shape[1], im0.shape[0]
+                        #fps, w, h = FPS_SET, 1600, 900
+                        print("stream w:{} h:{}".format(w,h))
+                        #fps, w, h = FPS_SET, SET_W, SET_H
+                        #save_path = str(Path(save_path).with_suffix('.mp4'))  # force *.mp4 suffix on results videos
+                        #vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
+                        
+                    save_path = str(Path(save_path).with_suffix('.avi'))  # force *.mp4 suffix on results videos
+                    #fourcc = cv2.VideoWriter_fourcc(*'MJPG')
+                    vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'MJPG'), fps, (w, h))
+                    #print("start print save path")
+                    #save_path = str(Path(save_path).with_suffix('.avi'))  # force *.mp4 suffix on results videos
+                    #print("save_path : {}".format(save_path))
+                    #vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'XVID'), fps, (w, h))
+                    #vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc('H', '2', '6', '4'), fps, (w, h),True)
+                vid_writer[i].write(im0)
+                
                 if save_anomaly_img:
                     img_dir = os.path.dirname(save_path)
                     img_name = s_time + '.jpg'
@@ -809,23 +842,7 @@ def Process_Prediction(pred=None,
                     img_path = os.path.join(img_dir,folder_name,img_name)
                     im0_resize = cv2.resize(im0,(1280,720))
                     cv2.imwrite(img_path, im0_resize)
-                if vid_path[i] != save_path:  # new video
-                    vid_path[i] = save_path
-                    if isinstance(vid_writer[i], cv2.VideoWriter):
-                        vid_writer[i].release()  # release previous video writer
-                    if vid_cap:  # video
-                        fps = vid_cap.get(cv2.CAP_PROP_FPS)
-                        #w = 1280
-                        #h = 720
-                        w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-                        h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-                    else:  # stream
-                        fps, w, h = FPS_SET, im0.shape[1], im0.shape[0]
-                        #fps, w, h = 20, 1280,720
-                    save_path = str(Path(save_path).with_suffix('.avi'))  # force *.mp4 suffix on results videos
-                    #vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'XVID'), fps, (w, h))
-                    vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc('H', '2', '6', '4'), fps, (w, h),True)
-                vid_writer[i].write(im0)
+                
         
         during_save_img = time.time() - save_img_time
         print("[Process_Prediction]during_save_img: {} ms".format(during_save_img*1000))
@@ -971,7 +988,7 @@ if __name__ == "__main__":
     imgsz = opt.imgsz
     save_conf = opt.save_conf
     nosave = opt.nosave
-    view_img = False #opt.view_img
+    view_img = opt.view_img
     hide_labels = opt.hide_labels
     hide_conf = opt.hide_conf
     source = opt.source
@@ -1098,7 +1115,8 @@ if __name__ == "__main__":
     #t2.join()
     #t3.join()
     
-    
+    #vid_cap_global.release()
+    #vid_writer.release()
     '''
     #for path, im, im0s, vid_cap, s in dataset:
     with dt[0]:
@@ -1128,9 +1146,9 @@ if __name__ == "__main__":
                         vid_cap_global,
                         vid_path,
                         vid_writer)
-        '''
+    
         
-    '''
+        
         pred = nms(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det)
     
         save_path, im0 = Process_Prediction(pred=pred,
@@ -1157,6 +1175,7 @@ if __name__ == "__main__":
     '''
     #LOGGER.info(f"{s_global}{(dt[0].dt + dt[1].dt + dt[2].dt) * 1E3:.1f}ms")
         
+    
     '''
     Run_inference(model=model,
                       pt=pt,
