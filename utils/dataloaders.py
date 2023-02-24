@@ -362,8 +362,8 @@ class LoadStreams:
             cap = cv2.VideoCapture(s)
             assert cap.isOpened(), f'{st}Failed to open {s}'
             #Alister 2022-12-22
-            cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 360)
+            #cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1600)
+            #cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 900)
             w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
             h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
             fps = cap.get(cv2.CAP_PROP_FPS)  # warning: may return 0 or nan
@@ -410,8 +410,8 @@ class LoadStreams:
             cv2.destroyAllWindows()
             raise StopIteration
 
-        #im0 = self.imgs.copy()
-        im0 = self.imgs #Alister modified 2023-01-12
+        im0 = self.imgs.copy()
+        #im0 = self.imgs #Alister modified 2023-01-12
         if self.transforms:
             im = np.stack([self.transforms(x) for x in im0])  # transforms
         else:
