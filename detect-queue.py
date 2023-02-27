@@ -403,14 +403,14 @@ def Get_Frame_and_model_Inference(my_queue,
                                   save_dir,
                                   path,
                                   augment):
-    global im_global
-    global path_global
-    global im0s_global
-    global s_global
-    global vid_cap_global
-    global pred_global
+    #global im_global
+    #global path_global
+    #global im0s_global
+    #global s_global
+    #global vid_cap_global
+    #global pred_global
     global model_global
-    global im_global
+    #global im_global
     #path, im, im0s, vid_cap, s = dataset
     #print(dataset)
     dataset.__iter__()
@@ -436,12 +436,12 @@ def Get_Frame_and_model_Inference(my_queue,
             #print("im is None")
             im = im[None]  # expand for batch dim
         #print("im.shape: {}".format(im.shape))
-        im_global = im
+        #im_global = im
         #print("im_global shape : {}".format(im_global.shape))
-        path_global = path
-        im0s_global = im0s
-        s_global = s
-        vid_cap_global = vid_cap
+        #path_global = path
+        #im0s_global = im0s
+        #s_global = s
+        #vid_cap_global = vid_cap
         
         
         
@@ -466,12 +466,12 @@ def Get_Frame_and_model_Inference(my_queue,
         model_inference_time = time.time()
         # Directories
         visualize = increment_path(save_dir / Path(path).stem, mkdir=True) if visualize else False
-        pred = model_global(im_global, augment=augment, visualize=visualize)
+        pred = model_global(im, augment=augment, visualize=visualize)
         
         #pred_global = pred
         
         #pred_list.append(pred)
-        pred_global = pred
+        #pred_global = pred
         #=================Alister add 2023-02-27======================
         my_queue.put([im,path,s,vid_cap,pred,im0s])
         #print("[model_inference]pred_global = {}".format(pred_global))
@@ -896,10 +896,10 @@ def PostProcess(my_queue,
                 vid_path,
                 vid_writer):
     #global pred_global
-    global im0s_global
-    global path_global
-    global im_global
-    global pred_global
+    #global im0s_global
+    #global path_global
+    #global im_global
+    #global pred_global
     
     #cv2.namedWindow("test", cv2.WINDOW_NORMAL | cv2.WINDOW_KEEPRATIO)  # allow window resize (Linux)
     #cv2.resizeWindow("test", im0.shape[1], im0.shape[0])
