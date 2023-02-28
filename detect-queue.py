@@ -61,12 +61,12 @@ SET_H=900
 set_time_2 = 0.001
 set_time_1 = 0.001
 set_time_3 = 0.001
-im_global=None
-path_global=None
-im0s_global=None
-s_global=None
-vid_cap_global=None
-pred_global=None
+#im_global=None
+#path_global=None
+#im0s_global=None
+#s_global=None
+#vid_cap_global=None
+#pred_global=None
 model_global=None
 anomaly_img_count=0
 sem1 = threading.Semaphore(0)
@@ -558,7 +558,7 @@ def Get_Frame_and_model_Inference(my_queue,
             #sem4.release() #sem4=1
             
             
-
+'''
 def Get_Frame(dataset):
     
     global im_global
@@ -609,9 +609,9 @@ def Get_Frame(dataset):
         #return im_global
         if USE_TIME:
             time.sleep(set_time_1)
+'''
 
-
-
+'''
 def model_inference(visualize,save_dir,path,augment):
     global pred_global
     global model_global
@@ -651,7 +651,7 @@ def model_inference(visualize,save_dir,path,augment):
         if USE_SEM4:
             sem4.release() #sem4=1
         #
-        
+'''    
 
 def nms(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det):
     pred_nms = non_max_suppression(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)
@@ -667,7 +667,7 @@ def Process_Prediction(pred=None,
                        dataset = None,
                        s='',
                        save_dir='',
-                       im = im_global,
+                       im = None,#im_global
                        save_crop = False,
                        line_thickness = 3,
                        names = '',
@@ -1102,7 +1102,7 @@ if __name__ == "__main__":
                                                                         dataset,
                                                                         visualize,
                                                                         save_dir,
-                                                                        path_global,augment,))
+                                                                        None,augment,))
     with dt[0]:
         t1.start()    
     print("after t1.start()")
@@ -1110,19 +1110,19 @@ if __name__ == "__main__":
     
     print("before t3")
     t3 = threading.Thread(target = PostProcess, args=(my_queue,
-                                                        pred_global, 
+                                                        None,#pred_global
                                                       conf_thres, 
                                                       iou_thres, 
                                                       classes, 
                                                       agnostic_nms, 
                                                       max_det,
                                                     source,
-                                                    path_global,
-                                                    im0s_global,
+                                                    None, #path_global
+                                                    None, #im0s_global
                                                     dataset,
-                                                    s_global,
+                                                    None, #s_global
                                                     save_dir,
-                                                    im_global,
+                                                    None,#im_global
                                                     save_crop,
                                                     line_thickness,
                                                     names,
@@ -1133,7 +1133,7 @@ if __name__ == "__main__":
                                                     hide_labels,
                                                     hide_conf,
                                                     dt,
-                                                    vid_cap_global,
+                                                    None,#vid_cap_global
                                                     vid_path,
                                                     vid_writer,) )
     
