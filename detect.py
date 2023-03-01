@@ -52,6 +52,14 @@ import threading
 import time
 import numpy as np
 import queue
+#=========Alister add 20223-02-28 Start to write multiprocess==================Failed
+from multiprocessing import Process
+#import multiprocessing.Queue as process_queue #wrong
+from multiprocessing import Queue
+get_frame_proc_queue = Queue()
+my_proc_queue = Queue()
+#================================================================================
+SAVE_AI_RESULT_STREAM=True
 USE_SEM4=True
 USE_SEM5=False
 USE_TIME=False
@@ -76,8 +84,10 @@ sem4 = threading.Semaphore(1)
 sem5 = threading.Semaphore(1)
 
 # 建立佇列
+get_frame_queue = queue.Queue()
 my_queue = queue.Queue()
-
+MULTI_PROCESS=False
+MULTI_THREAD=True
 #@smart_inference_mode()
 def run(
         weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
@@ -246,7 +256,8 @@ def run(
 def parse_opt():
     parser = argparse.ArgumentParser()
     parser.add_argument('--weights', nargs='+', type=str, default= r'C:\GitHub_Code\cuteboyqq\YOLO\YOLOV5-rasp\runs\train\f192_2022-12-29-4cls\weights\best.pt', help='model path(s)')
-    parser.add_argument('--source', type=str, default=r'C:\factory_data\Produce_1221_720P_30FPS_SHORT.mp4', help='file/dir/URL/glob, 0 for webcam')
+    #parser.add_argument('--source', type=str, default=r'C:\factory_data\Produce_1221_720P_30FPS_SHORT.mp4', help='file/dir/URL/glob, 0 for webcam')
+    parser.add_argument('--source', type=str, default='0', help='file/dir/URL/glob, 0 for webcam')
     parser.add_argument('--data', type=str, default=r'/home/ali/GitHub_Code/cuteboyqq/YOLO/YOLOV5-rasp/data/factory_new2.yaml', help='(optional) dataset.yaml path')
     parser.add_argument('--imgsz', '--img', '--img-size', nargs='+', type=int, default=[192], help='inference size h,w')
     parser.add_argument('--conf-thres', type=float, default=0.25, help='confidence threshold')
@@ -397,7 +408,8 @@ def Run_inference(model='',
         
     #raise NotImplemented
 
-def Get_Frame_and_model_Inference(my_queue, 
+def Get_Frame_and_model_Inference(my_queue,
+                                  model,
                                   dataset,
                                   visualize,
                                   save_dir,
@@ -409,7 +421,7 @@ def Get_Frame_and_model_Inference(my_queue,
     #global s_global
     #global vid_cap_global
     #global pred_global
-    global model_global
+    #global model_global
     #global im_global
     #path, im, im0s, vid_cap, s = dataset
     #print(dataset)
@@ -466,7 +478,7 @@ def Get_Frame_and_model_Inference(my_queue,
         model_inference_time = time.time()
         # Directories
         visualize = increment_path(save_dir / Path(path).stem, mkdir=True) if visualize else False
-        pred = model_global(im, augment=augment, visualize=visualize)
+        pred = model(im, augment=augment, visualize=visualize)
         
         #pred_global = pred
         
@@ -558,23 +570,32 @@ def Get_Frame_and_model_Inference(my_queue,
             #sem4.release() #sem4=1
             
             
-'''
+
 def Get_Frame(dataset):
     
-    global im_global
-    global path_global
-    global im0s_global
-    global s_global
-    global vid_cap_global
+    #global im_global
+    #global path_global
+    #global im0s_global
+    #global s_global
+    #global vid_cap_global
     
     #path, im, im0s, vid_cap, s = dataset
     #print(dataset)
+    '''
+    dataset, bs, source = load_dataloader(source=source,
+                                    nosave=False,
+                                    imgsz=imgsz,
+                                    stride=stride,
+                                    pt=pt
+                                    )
+    '''
+    
     dataset.__iter__()
     while True:
         
         #for path, im, im0s, vid_cap, s in dataset:
-        if USE_SEM4:    
-            sem4.acquire() #sem4=0
+        #if USE_SEM4:    
+            #sem4.acquire() #sem4=0
             #for path, im, im0s, vid_cap, s in dataset:
             #path, im, im0s, vid_cap, s = dataset
         
@@ -589,12 +610,15 @@ def Get_Frame(dataset):
             #print("im is None")
             im = im[None]  # expand for batch dim
         #print("im.shape: {}".format(im.shape))
-        im_global = im
+        #im_global = im
         #print("im_global shape : {}".format(im_global.shape))
-        path_global = path
-        im0s_global = im0s
-        s_global = s
-        vid_cap_global = vid_cap
+        #path_global = path
+        #im0s_global = im0s
+        #s_global = s
+        #vid_cap_global = vid_cap
+        #======Alister 2023-02-28 add queue================
+        #========put get frame result to queue=============
+        get_frame_queue.put([im,path,im0s,s,vid_cap])
         
         print("1")
         
@@ -602,38 +626,106 @@ def Get_Frame(dataset):
         print("during_get_frame : {} ms".format(during_get_frame*1000))
         
         #print("[Get_Frame]get im done")
-        sem1.release() #sem1=1
+        #sem1.release() #sem1=1
         #print("[Get_Frame]sem1 after release: {}".format(sem1))
         #print(im_global.shape)
         #return im, path, s, im0s, vid_cap
         #return im_global
         if USE_TIME:
             time.sleep(set_time_1)
-'''
 
-'''
+def Get_Frame_proc(dataset):
+    
+    #global im_global
+    #global path_global
+    #global im0s_global
+    #global s_global
+    #global vid_cap_global
+    
+    #path, im, im0s, vid_cap, s = dataset
+    #print(dataset)
+    '''
+    dataset, bs, source = load_dataloader(source=source,
+                                    nosave=False,
+                                    imgsz=imgsz,
+                                    stride=stride,
+                                    pt=pt
+                                    )
+    '''
+    
+    dataset.__iter__()
+    while True:
+        
+        #for path, im, im0s, vid_cap, s in dataset:
+        #if USE_SEM4:    
+            #sem4.acquire() #sem4=0
+            #for path, im, im0s, vid_cap, s in dataset:
+            #path, im, im0s, vid_cap, s = dataset
+        
+        get_frame_time = time.time()
+        
+        data = dataset.__next__()
+        path, im, im0s, vid_cap, s = data
+        im = torch.from_numpy(im).to(device)
+        im = im.half() if model.fp16 else im.float()  # uint8 to fp16/32
+        im /= 255  # 0 - 255 to 0.0 - 1.0
+        if len(im.shape) == 3:
+            #print("im is None")
+            im = im[None]  # expand for batch dim
+        #print("im.shape: {}".format(im.shape))
+        #im_global = im
+        #print("im_global shape : {}".format(im_global.shape))
+        #path_global = path
+        #im0s_global = im0s
+        #s_global = s
+        #vid_cap_global = vid_cap
+        #======Alister 2023-02-28 add queue================
+        #========put get frame result to queue (process queue)=============
+        get_frame_proc_queue.put([im,path,im0s,s,vid_cap])
+        
+        print("1")
+        
+        during_get_frame = time.time() - get_frame_time
+        print("during_get_frame : {} ms".format(during_get_frame*1000))
+        
+        #print("[Get_Frame]get im done")
+        #sem1.release() #sem1=1
+        #print("[Get_Frame]sem1 after release: {}".format(sem1))
+        #print(im_global.shape)
+        #return im, path, s, im0s, vid_cap
+        #return im_global
+        if USE_TIME:
+            time.sleep(set_time_1)
+
+
 def model_inference(visualize,save_dir,path,augment):
-    global pred_global
+    #global pred_global
     global model_global
-    global im_global
+    #global im_global
     pred_list = []
     while True:
+        #============get frame queue=============================
+        get_frame_data_from_queue = get_frame_queue.get()
+        im_queue,path_queue,im0s_queue,s_queue,vid_cap_queue = get_frame_data_from_queue
         #print("[model_inference] sem1 befroe acquire: {}".format(sem1))
         
-        sem1.acquire() #sem1=0
-        if USE_SEM5:
-            sem5.acquire()
+        #sem1.acquire() #sem1=0
+        #if USE_SEM5:
+            #sem5.acquire()
         #sem5.acquire()
         #print("[model_inference] sem1 after acquire: {}".format(sem1))
         model_inference_time = time.time()
         # Directories
         visualize = increment_path(save_dir / Path(path).stem, mkdir=True) if visualize else False
-        pred = model_global(im_global, augment=augment, visualize=visualize)
+        pred = model_global(im_queue, augment=augment, visualize=visualize)
       
         #pred_global = pred
         
         #pred_list.append(pred)
-        pred_global = pred
+        #pred_global = pred
+        #=================Alister add 2023-02-28======================== 
+        #======put model inference result to queue======================
+        my_queue.put([im_queue,path_queue,s_queue,vid_cap_queue,pred,im0s_queue])
         #print("[model_inference]pred_global = {}".format(pred_global))
         #return pre2
         
@@ -646,12 +738,57 @@ def model_inference(visualize,save_dir,path,augment):
             time.sleep(set_time_2)
         
         #print("[model_inference] sem2 start release: {}".format(sem2))
-        sem2.release() #sem2=1
+        #sem2.release() #sem2=1
         #print("[model_inference] sem2 release done: {}".format(sem2))
-        if USE_SEM4:
-            sem4.release() #sem4=1
+        #if USE_SEM4:
+            #sem4.release() #sem4=1
         #
-'''    
+
+def model_inference_proc(model,visualize,save_dir,path,augment):
+    #global pred_global
+    #global model_global
+    #global im_global
+    pred_list = []
+    while True:
+        #============get frame queue (process queue)=============================
+        get_frame_data_from_proc_queue = get_frame_proc_queue.get()
+        im_queue,path_queue,im0s_queue,s_queue,vid_cap_queue = get_frame_data_from_proc_queue
+        #print("[model_inference] sem1 befroe acquire: {}".format(sem1))
+        
+        #sem1.acquire() #sem1=0
+        #if USE_SEM5:
+            #sem5.acquire()
+        #sem5.acquire()
+        #print("[model_inference] sem1 after acquire: {}".format(sem1))
+        model_inference_time = time.time()
+        # Directories
+        visualize = increment_path(save_dir / Path(path).stem, mkdir=True) if visualize else False
+        pred = model(im_queue, augment=augment, visualize=visualize)
+      
+        #pred_global = pred
+        
+        #pred_list.append(pred)
+        #pred_global = pred
+        #=================Alister add 2023-02-28======================== 
+        #======put model inference result to queue (process queue)======================
+        my_proc_queue.put([im_queue,path_queue,s_queue,vid_cap_queue,pred,im0s_queue])
+        #print("[model_inference]pred_global = {}".format(pred_global))
+        #return pre2
+        
+        print("2")
+        
+        during_model_inference = time.time() - model_inference_time
+        print("during_model_inference : {} ms".format(during_model_inference*1000))
+        
+        if USE_TIME:
+            time.sleep(set_time_2)
+        
+        #print("[model_inference] sem2 start release: {}".format(sem2))
+        #sem2.release() #sem2=1
+        #print("[model_inference] sem2 release done: {}".format(sem2))
+        #if USE_SEM4:
+            #sem4.release() #sem4=1
+        #
 
 def nms(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det):
     pred_nms = non_max_suppression(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)
@@ -811,51 +948,52 @@ def Process_Prediction(pred=None,
         # Save results (image with detections)
         #print("save img : {}".format(save_img))
         save_img_time = time.time()
-        if save_img:
-            if dataset.mode == 'image':
-                cv2.imwrite(save_path, im0)
-            else:  # 'video' or 'stream'
-                
-                if vid_path[i] != save_path:  # new video
-                    vid_path[i] = save_path
-                    if isinstance(vid_writer[i], cv2.VideoWriter):
-                        vid_writer[i].release()  # release previous video writer
-                    if vid_cap:  # video
-                        fps = vid_cap.get(cv2.CAP_PROP_FPS)
-                        vid_cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1600)
-                        vid_cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 900)
-                        w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-                        h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-                        print("vidcap w:{} h:{}".format(w,h))
-                    else:  # stream
-                        fps, w, h = FPS_SET, im0.shape[1], im0.shape[0]
-                        #fps, w, h = FPS_SET, 1600, 900
-                        print("stream w:{} h:{}".format(w,h))
-                        #fps, w, h = FPS_SET, SET_W, SET_H
-                        #save_path = str(Path(save_path).with_suffix('.mp4'))  # force *.mp4 suffix on results videos
-                        #vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
-                        
-                    save_path = str(Path(save_path).with_suffix('.avi'))  # force *.mp4 suffix on results videos
-                    #fourcc = cv2.VideoWriter_fourcc(*'MJPG')
-                    vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'MJPG'), fps, (w, h))
-                    #print("start print save path")
-                    #save_path = str(Path(save_path).with_suffix('.avi'))  # force *.mp4 suffix on results videos
-                    #print("save_path : {}".format(save_path))
-                    #vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'XVID'), fps, (w, h))
-                    #vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc('H', '2', '6', '4'), fps, (w, h),True)
-                vid_writer[i].write(im0)
-                
-                if save_anomaly_img:
-                    img_dir = os.path.dirname(save_path)
-                    img_name = s_time + '.jpg'
-                    folder_name = 'anomaly_img'
-                    if not os.path.exists(os.path.join(img_dir,folder_name)):
-                        os.makedirs(os.path.join(img_dir,folder_name))
-                    img_path = os.path.join(img_dir,folder_name,img_name)
-                    #im0_resize = cv2.resize(im0,(1920,1080))
-                    #cv2.imwrite(img_path, im0_resize)
-                    cv2.imwrite(img_path, im0)
-                
+        if SAVE_AI_RESULT_STREAM:
+        
+            if save_img:
+                if dataset.mode == 'image':
+                    cv2.imwrite(save_path, im0)
+                else:  # 'video' or 'stream'
+                    
+                    if vid_path[i] != save_path:  # new video
+                        vid_path[i] = save_path
+                        if isinstance(vid_writer[i], cv2.VideoWriter):
+                            vid_writer[i].release()  # release previous video writer
+                        if vid_cap:  # video
+                            fps = vid_cap.get(cv2.CAP_PROP_FPS)
+                            vid_cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1600)
+                            vid_cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 900)
+                            w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                            h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                            print("vidcap w:{} h:{}".format(w,h))
+                        else:  # stream
+                            fps, w, h = FPS_SET, im0.shape[1], im0.shape[0]
+                            #fps, w, h = FPS_SET, 1600, 900
+                            print("stream w:{} h:{}".format(w,h))
+                            #fps, w, h = FPS_SET, SET_W, SET_H
+                            #save_path = str(Path(save_path).with_suffix('.mp4'))  # force *.mp4 suffix on results videos
+                            #vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
+                            
+                        save_path = str(Path(save_path).with_suffix('.avi'))  # force *.mp4 suffix on results videos
+                        #fourcc = cv2.VideoWriter_fourcc(*'MJPG')
+                        vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'MJPG'), fps, (w, h))
+                        #print("start print save path")
+                        #save_path = str(Path(save_path).with_suffix('.avi'))  # force *.mp4 suffix on results videos
+                        #print("save_path : {}".format(save_path))
+                        #vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'XVID'), fps, (w, h))
+                        #vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc('H', '2', '6', '4'), fps, (w, h),True)
+                    vid_writer[i].write(im0)
+                    
+                    if save_anomaly_img:
+                        img_dir = os.path.dirname(save_path)
+                        img_name = s_time + '.jpg'
+                        folder_name = 'anomaly_img'
+                        if not os.path.exists(os.path.join(img_dir,folder_name)):
+                            os.makedirs(os.path.join(img_dir,folder_name))
+                        img_path = os.path.join(img_dir,folder_name,img_name)
+                        #im0_resize = cv2.resize(im0,(1920,1080))
+                        #cv2.imwrite(img_path, im0_resize)
+                        cv2.imwrite(img_path, im0)
         
         during_save_img = time.time() - save_img_time
         print("[Process_Prediction]during_save_img: {} ms".format(during_save_img*1000))
@@ -911,6 +1049,96 @@ def PostProcess(my_queue,
         #=======Alister add 2023-02-27=============
         q_data=my_queue.get()
         im_from_queue,path_from_queue,s_from_queue,vid_cap_from_queue,pred_from_queue,im0s_from_queue = q_data
+        my_queue.task_done()
+        #==========================================
+        #print("[PostProcess]pred_global: {}".format(pred_global))
+        #pred_global.reverse()
+        #print("[PostProcess]pred_global.reverse() : {}".format(pred_global))
+        
+        post_process_time = time.time()
+        #print("[PostProcess] sem2 after acquire")
+        nms_time = time.time()
+        #print("[PostProcess] before nms")
+        #pred_in = pred_global.pop()
+        #print("[PostProcess]pred_in: {}".format(pred_in))
+        pred = nms(pred_from_queue, conf_thres, iou_thres, classes, agnostic_nms, max_det)
+        during_nms = time.time() - nms_time
+        print("[PostProcess]during_nms : {} ms".format(during_nms*1000))
+        #print("[PostProcess] after nms")
+        #print("pred : {}".format(pred))
+        
+        #print("[PostProcess] before Process_Prediction")
+        save_path, im0 = Process_Prediction(
+                            pred=pred,
+                            source = source,
+                            path=path_from_queue,
+                            im0s=im0s_from_queue,
+                            dataset = dataset,
+                            s=s_from_queue,
+                            save_dir=save_dir,
+                            im =im_from_queue,
+                            save_crop=False,
+                            line_thickness=3,
+                            names=names,
+                            save_txt=save_txt,
+                            save_conf=save_conf,
+                            save_img=save_img,
+                            view_img=view_img,
+                            hide_labels=hide_labels,
+                            hide_conf=hide_conf,
+                            dt=dt,
+                            vid_cap=vid_cap,
+                            vid_path=vid_path,
+                            vid_writer=vid_writer)
+        #print("[PostProcess] after Process_Prediction")
+        print("3")
+        
+        during_post_process = time.time() - post_process_time
+        print("[PostProcess]during_post_process: {} ms".format(during_post_process*1000))
+        if USE_SEM5:
+            sem5.release()
+        if USE_TIME:
+            time.sleep(set_time_3)
+            
+            
+def PostProcess_proc(my_queue,
+        pred, conf_thres, iou_thres, classes, agnostic_nms, max_det,
+                source,
+                path,
+                im0s,
+                dataset,
+                s,
+                save_dir,
+                im,
+                save_crop,
+                line_thickness,
+                names,
+                save_txt,
+                save_conf,
+                save_img,
+                view_img,
+                hide_labels,
+                hide_conf,
+                dt,
+                vid_cap,
+                vid_path,
+                vid_writer):
+    #global pred_global
+    #global im0s_global
+    #global path_global
+    #global im_global
+    #global pred_global
+    
+    #cv2.namedWindow("test", cv2.WINDOW_NORMAL | cv2.WINDOW_KEEPRATIO)  # allow window resize (Linux)
+    #cv2.resizeWindow("test", im0.shape[1], im0.shape[0])
+    #pred_global_new = []
+    while True:
+        #print("[PostProcess] sem2 before acquire")
+        
+        #sem2.acquire() #sem2=0
+        #=======Alister add 2023-02-27 (process queue)=============
+        q_proc_data=my_proc_queue.get()
+        im_from_queue,path_from_queue,s_from_queue,vid_cap_from_queue,pred_from_queue,im0s_from_queue = q_proc_data
         my_queue.task_done()
         #==========================================
         #print("[PostProcess]pred_global: {}".format(pred_global))
@@ -1032,7 +1260,7 @@ if __name__ == "__main__":
                                     )
     
     # Block until all tasks are done.
-    my_queue.join()
+    #my_queue.join()
     #================================
     '''
     # 建立一個子執行緒
@@ -1072,80 +1300,154 @@ if __name__ == "__main__":
     (save_dir / 'labels' if save_txt else save_dir).mkdir(parents=True, exist_ok=True)  # make dir
     model_global.warmup(imgsz=(1 if pt else bs, 3, *imgsz))  # warmup
     seen, windows, dt = 0, [], (Profile(), Profile(), Profile())
-    
-    
-    
-    
-    print("Thread count: {}".format(threading.active_count()))
-    print("threading.enumerate() :{}".format(threading.enumerate() ))
-    #for path, im, im0s, vid_cap, s in dataset:
-    #path_global = None
-    '''
-    print("before t1")
-    t1 = threading.Thread(target = Get_Frame ,args=(dataset,))
-    with dt[0]:
-        t1.start()    
-    print("after t1.start()")
-    
-    #global path_global
-    print("before t2")
-    t2 = threading.Thread(target = model_inference,args=(visualize,save_dir,path_global,augment,))
-    with dt[1]:
-        t2.start()
-    print("after t2.start()")
-    #
-    '''
-    
-    
-    print("before t1")
-    t1 = threading.Thread(target = Get_Frame_and_model_Inference ,args=(my_queue, 
-                                                                        dataset,
-                                                                        visualize,
-                                                                        save_dir,
-                                                                        None,augment,))
-    with dt[0]:
-        t1.start()    
-    print("after t1.start()")
-    
-    
-    print("before t3")
-    t3 = threading.Thread(target = PostProcess, args=(my_queue,
-                                                        None,#pred_global
-                                                      conf_thres, 
-                                                      iou_thres, 
-                                                      classes, 
-                                                      agnostic_nms, 
-                                                      max_det,
-                                                    source,
-                                                    None, #path_global
-                                                    None, #im0s_global
-                                                    dataset,
-                                                    None, #s_global
-                                                    save_dir,
-                                                    None,#im_global
-                                                    save_crop,
-                                                    line_thickness,
-                                                    names,
-                                                    save_txt,
-                                                    save_conf,
-                                                    save_img,
-                                                    view_img,
-                                                    hide_labels,
-                                                    hide_conf,
-                                                    dt,
-                                                    None,#vid_cap_global
-                                                    vid_path,
-                                                    vid_writer,) )
-    
-    print("Thread count: {}".format(threading.active_count()))
-    with dt[2]:
-        t3.start()
-    print("after t3.start()")
-    
-    
-    #t1.join()
-    #t2.join()
-    #t3.join()
+    if MULTI_PROCESS:
+        #================Alister add 2023-02-28 multi process code================================================================
+        print("before p1")
+        '''
+        p1 = Process(target = Get_Frame_and_model_Inference ,args=(my_queue, 
+                                                                            dataset,
+                                                                            visualize,
+                                                                            save_dir,
+                                                                            None,augment,))
+        with dt[0]:
+            p1.start()    
+        print("after p1.start()")
+        '''
+        #=================
+        #process Get_Frame
+        #=================
+        p1 = Process(target = Get_Frame_proc ,args=(dataset, ))
+        with dt[0]:
+            p1.start()    
+        print("after p1.start()") 
+        #======================
+        #process model_inference
+        #=======================
+        print("before p2")
+        p2 = threading.Thread(target = model_inference_proc,args=(model,visualize,save_dir,None,augment,))
+        with dt[1]:
+            p2.start()
+        print("after p2.start()")
+        #======================
+        #process PostProcess
+        #=======================
+        print("before p3")
+        p3 = Process(target = PostProcess_proc, args=(my_proc_queue,
+                                                            None,#pred_global
+                                                          conf_thres, 
+                                                          iou_thres, 
+                                                          classes, 
+                                                          agnostic_nms, 
+                                                          max_det,
+                                                        source,
+                                                        None, #path_global
+                                                        None, #im0s_global
+                                                        dataset,
+                                                        None, #s_global
+                                                        save_dir,
+                                                        None,#im_global
+                                                        save_crop,
+                                                        line_thickness,
+                                                        names,
+                                                        save_txt,
+                                                        save_conf,
+                                                        save_img,
+                                                        view_img,
+                                                        hide_labels,
+                                                        hide_conf,
+                                                        dt,
+                                                        None,#vid_cap_global
+                                                        vid_path,
+                                                        vid_writer,) )
+        
+        #print("Thread count: {}".format(threading.active_count()))
+        with dt[2]:
+            p3.start()
+        print("after p3.start()")
+        #==================================================================================================
+    if MULTI_THREAD:
+        #================multi thread code=================================================================
+        print("Thread count: {}".format(threading.active_count()))
+        print("threading.enumerate() :{}".format(threading.enumerate() ))
+        #for path, im, im0s, vid_cap, s in dataset:
+        #path_global = None
+        
+        #=================
+        #thread Get_Frame
+        #=================
+        print("before t1")
+        t1 = threading.Thread(target = Get_Frame ,args=(dataset, ))
+        with dt[0]:
+            t1.start()    
+        print("after t1.start()")
+        
+        #global path_global
+        #======================
+        #thread model_inference
+        #=======================
+        print("before t2")
+        t2 = threading.Thread(target = model_inference,args=(visualize,save_dir,None,augment,))
+        with dt[1]:
+            t2.start()
+        print("after t2.start()")
+        #
+        
+        
+        '''
+        #===========combine Get_frame & model_inference============================================
+        print("before t1")
+        t1 = threading.Thread(target = Get_Frame_and_model_Inference ,args=(my_queue,
+                                                                            model,
+                                                                            dataset,
+                                                                            visualize,
+                                                                            save_dir,
+                                                                            None,augment,))
+        with dt[0]:
+            t1.start()    
+        print("after t1.start()")
+        '''
+        #========================
+        #thread PostProcess
+        #========================
+        print("before t3")
+        t3 = threading.Thread(target = PostProcess, args=(my_queue,
+                                                            None,#pred_global
+                                                          conf_thres, 
+                                                          iou_thres, 
+                                                          classes, 
+                                                          agnostic_nms, 
+                                                          max_det,
+                                                        source,
+                                                        None, #path_global
+                                                        None, #im0s_global
+                                                        dataset,
+                                                        None, #s_global
+                                                        save_dir,
+                                                        None,#im_global
+                                                        save_crop,
+                                                        line_thickness,
+                                                        names,
+                                                        save_txt,
+                                                        save_conf,
+                                                        save_img,
+                                                        view_img,
+                                                        hide_labels,
+                                                        hide_conf,
+                                                        dt,
+                                                        None,#vid_cap_global
+                                                        vid_path,
+                                                        vid_writer,) )
+        
+        print("Thread count: {}".format(threading.active_count()))
+        with dt[2]:
+            t3.start()
+        print("after t3.start()")
+        
+        
+        #t1.join()
+        #t2.join()
+        #t3.join()
+        #===============================================================================================================
     
     #vid_cap_global.release()
     #vid_writer.release()
