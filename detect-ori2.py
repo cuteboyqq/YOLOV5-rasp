@@ -36,7 +36,6 @@ import os
 import platform
 import sys
 from pathlib import Path
-
 import torch
 
 FILE = Path(__file__).resolve()
@@ -58,6 +57,11 @@ import datetime
 import time
 import threading
 import queue
+from datetime import datetime as datetime_detail
+SAVE_AI_RESULT_STREAM=False
+
+Total_one_frame_time=0
+frame_count_global=1
 
 @smart_inference_mode()
 def run(weights=ROOT / 'yolov5s.pt',  # model path or triton URL
@@ -324,12 +328,18 @@ def run(weights=ROOT / 'yolov5s.pt',  # model path or triton URL
                     print("[detect.py]during_filter_line : {}".format(float(during_filter_line)*1000))
                 # Write results
                 for *xyxy, conf, cls in reversed(det):
+                    save_anomaly_img = False
                     if save_txt:  # Write to file
                         xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
                         line = (cls, *xywh, conf) if save_conf else (cls, *xywh)  # label format
                         with open(f'{txt_path}.txt', 'a') as f:
                             f.write(('%g ' * len(line)).rstrip() % line + '\n')
-
+                    
+                    
+                    if c==1 and conf<0.70 and filter_line_label==False: #test c==1 
+                        save_anomaly_img = True
+                        now = datetime_detail.now()
+                        s_time = datetime_detail.strftime(now,'%y-%m-%d %H:%M:%S')
                     
                     if save_crop:
                         #Alister add 2022-11-08
@@ -388,6 +398,7 @@ def run(weights=ROOT / 'yolov5s.pt',  # model path or triton URL
                             if save_img or save_crop or view_img:  # Add bbox to image
                                 c = int(cls)  # integer class
                                 #Just handle label line c=0
+                                annotator.time_label()
                                 if c==0:
                                     if c==0:
                                         line_count+=1
@@ -488,14 +499,14 @@ def run(weights=ROOT / 'yolov5s.pt',  # model path or triton URL
                         if save_img or save_crop or view_img:  # Add bbox to image
                             c = int(cls)  # integer class
                             label = None if hide_labels else (names[c] if hide_conf else f'{names[c]} {conf:.2f}')
-                            
+                            annotator.time_label()
                             if c==0 and filter_line_label==False:
                                 if conf<ganomaly_conf:
                                     annotator.box_label(xyxy, label+" anomaly" , color=(0,0,255))
                                 else:
                                     annotator.box_label(xyxy, label+" normal" , color=(255,0,0))
-                            #else:
-                                #annotator.box_label(xyxy, label, color=colors(c, True))
+                            else: #draw noline/others/frontline label Bounding box
+                                annotator.box_label(xyxy, label, color=colors(c, True))
                         #======================================================================================================================
                         if time_log:
                             during_yolo_annotator = time.time() -start_yolo_annotator #start_yolo_annotator line 453
@@ -524,28 +535,38 @@ def run(weights=ROOT / 'yolov5s.pt',  # model path or triton URL
             start_save_image = time.time()
             #====================================save images======================================================================
             # Save results (image with detections)
-            if save_img:
-                
-                if dataset.mode == 'image':
-                    cv2.imwrite(save_path, im0)
-                else:  # 'video' or 'stream'
-                    if vid_path[i] != save_path:  # new video
-                        vid_path[i] = save_path
-                        if isinstance(vid_writer[i], cv2.VideoWriter):
-                            vid_writer[i].release()  # release previous video writer
-                        if vid_cap:  # video
-                            fps = vid_cap.get(cv2.CAP_PROP_FPS)
-                            vid_cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
-                            vid_cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
-                            w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-                            h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-                        else:  # stream
-                            fps, w, h = 25, im0.shape[1], im0.shape[0]
-                        save_path = str(Path(save_path).with_suffix('.avi'))  # force *.mp4 suffix on results videos
-                        vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc('H', '2', '6', '4'), fps, (w, h),True)
-                        #vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
-                    vid_writer[i].write(im0)
-            
+            if SAVE_AI_RESULT_STREAM:
+                if save_img:
+                    
+                    if dataset.mode == 'image':
+                        cv2.imwrite(save_path, im0)
+                    else:  # 'video' or 'stream'
+                        if vid_path[i] != save_path:  # new video
+                            vid_path[i] = save_path
+                            if isinstance(vid_writer[i], cv2.VideoWriter):
+                                vid_writer[i].release()  # release previous video writer
+                            if vid_cap:  # video
+                                fps = vid_cap.get(cv2.CAP_PROP_FPS)
+                                vid_cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+                                vid_cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+                                w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                                h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                            else:  # stream
+                                fps, w, h = 25, im0.shape[1], im0.shape[0]
+                            save_path = str(Path(save_path).with_suffix('.avi'))  # force *.mp4 suffix on results videos
+                            vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc('H', '2', '6', '4'), fps, (w, h),True)
+                            #vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
+                        vid_writer[i].write(im0)
+            if save_anomaly_img:
+                img_dir = os.path.dirname(save_path)
+                img_name = s_time + '.jpg'
+                folder_name = 'anomaly_img'
+                if not os.path.exists(os.path.join(img_dir,folder_name)):
+                    os.makedirs(os.path.join(img_dir,folder_name))
+                img_path = os.path.join(img_dir,folder_name,img_name)
+                #im0_resize = cv2.resize(im0,(1920,1080))
+                #cv2.imwrite(img_path, im0_resize)
+                cv2.imwrite(img_path, im0)
             #release semaphore 2023-01-16
             semaphore.release()
             #========================================================================================================================
@@ -559,6 +580,16 @@ def run(weights=ROOT / 'yolov5s.pt',  # model path or triton URL
             print("[detect.py]sum_all_during: {}".format(float(sum_all_during*1000)))
         druring_detect_one_frame = time.time() - start_detect_one_frame_time # start_detect_one_frame_time is initialize at line 194
         print('[detect.py]============druring_detect_one_frame : {} ms=============='.format(float(druring_detect_one_frame*1000)))
+        global Total_one_frame_time
+        global frame_count_global
+        Total_one_frame_time+=druring_detect_one_frame
+        Avg_one_frame_time = Total_one_frame_time/frame_count_global
+        FPS = int(1000.0/float(Avg_one_frame_time*1000))
+        frame_count_global+=1
+        print("=======f:{}=Total time:{} ms==========[Sequential]Avg_one_frame_time: {} ms====FPS:{}==================".format(frame_count_global,
+                                                                                                                         Total_one_frame_time*1000,
+                                                                                                                         Avg_one_frame_time*1000,
+                                                                                                                               FPS))
         # Print time (inference-only)
         LOGGER.info(f"{s}{'' if len(det) else '(no detections), '}{dt[1].dt * 1E3:.1f}ms")
 

@@ -52,6 +52,9 @@ import threading
 import time
 import numpy as np
 import queue
+
+Total_postprocess_time = 0
+frame_count_global = 1
 #=========Alister add 20223-02-28 Start to write multiprocess==================Failed
 from multiprocessing import Process
 #import multiprocessing.Queue as process_queue #wrong
@@ -72,8 +75,8 @@ set_time_3 = 0.001
 #im_global=None
 #path_global=None
 #im0s_global=None
-#s_global=None
-#vid_cap_global=None
+s_global=None
+vid_cap_global=None
 #pred_global=None
 model_global=None
 anomaly_img_count=0
@@ -84,10 +87,12 @@ sem4 = threading.Semaphore(1)
 sem5 = threading.Semaphore(1)
 
 # 建立佇列
-get_frame_queue = queue.Queue()
-my_queue = queue.Queue()
+get_frame_queue = queue.Queue(30)
+my_queue = queue.Queue(30)
+parameter_queue = queue.Queue(30)
 MULTI_PROCESS=False
 MULTI_THREAD=True
+frame_cnt = 1
 #@smart_inference_mode()
 def run(
         weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
@@ -255,10 +260,10 @@ def run(
 
 def parse_opt():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--weights', nargs='+', type=str, default= r'C:\GitHub_Code\cuteboyqq\YOLO\YOLOV5-rasp\runs\train\f192_2022-12-29-4cls\weights\best.pt', help='model path(s)')
-    #parser.add_argument('--source', type=str, default=r'C:\factory_data\Produce_1221_720P_30FPS_SHORT.mp4', help='file/dir/URL/glob, 0 for webcam')
+    parser.add_argument('--weights', nargs='+', type=str, default= r'/home/ali/Desktop/YOLOV5-rasp/runs/train/f192_2022-12-29-4cls/weights/best.pt', help='model path(s)')
+    #parser.add_argument('--source', type=str, default=r'/home/ali/factory_video/ori_video_ver2.mp4', help='file/dir/URL/glob, 0 for webcam')
     parser.add_argument('--source', type=str, default='0', help='file/dir/URL/glob, 0 for webcam')
-    parser.add_argument('--data', type=str, default=r'/home/ali/GitHub_Code/cuteboyqq/YOLO/YOLOV5-rasp/data/factory_new2.yaml', help='(optional) dataset.yaml path')
+    parser.add_argument('--data', type=str, default=r'/home/ali/Desktop/YOLOV5-rasp/data/factory_new2.yaml', help='(optional) dataset.yaml path')
     parser.add_argument('--imgsz', '--img', '--img-size', nargs='+', type=int, default=[192], help='inference size h,w')
     parser.add_argument('--conf-thres', type=float, default=0.25, help='confidence threshold')
     parser.add_argument('--iou-thres', type=float, default=0.45, help='NMS IoU threshold')
@@ -589,7 +594,8 @@ def Get_Frame(dataset):
                                     pt=pt
                                     )
     '''
-    
+    global s_global
+    global vid_cap_global
     dataset.__iter__()
     while True:
         
@@ -603,7 +609,9 @@ def Get_Frame(dataset):
         
         data = dataset.__next__()
         path, im, im0s, vid_cap, s = data
+        #print("[Get_Frame] im shape {} :".format(im.shape))
         im = torch.from_numpy(im).to(device)
+        #print("[Get_Frame] im torch.from_numpy shape {} :".format(im.shape))
         im = im.half() if model.fp16 else im.float()  # uint8 to fp16/32
         im /= 255  # 0 - 255 to 0.0 - 1.0
         if len(im.shape) == 3:
@@ -618,21 +626,35 @@ def Get_Frame(dataset):
         #vid_cap_global = vid_cap
         #======Alister 2023-02-28 add queue================
         #========put get frame result to queue=============
-        get_frame_queue.put([im,path,im0s,s,vid_cap])
-        
-        print("1")
+        q1_time = time.time()
+        #get_frame_queue.put([im,path,im0s,s,vid_cap])#Root Cause : Here cost a lot of time 2023-03-02
+        get_frame_queue.put([im,path,im0s])#Root Cause : Here cost a lot of time 2023-03-02
+        during_q1_put = time.time() - q1_time
+        print("[TIME_LOG]during_q1_put : {} ms".format(during_q1_put*1000))
+        #print("1")
         
         during_get_frame = time.time() - get_frame_time
-        print("during_get_frame : {} ms".format(during_get_frame*1000))
+        print("[Get_Frame]during_get_frame : {} ms".format(during_get_frame*1000))
+        global frame_cnt
+        #==========Alister add 2023-03-02============
+        if frame_cnt==1:
+            #parameter_queue.put([s,vid_cap]) #Failed
+            s_global = s
+            vid_cap_global = vid_cap
         
+        
+        if frame_cnt%9999==0:
+            frame_cnt=2
+            
+        frame_cnt+=1
         #print("[Get_Frame]get im done")
         #sem1.release() #sem1=1
         #print("[Get_Frame]sem1 after release: {}".format(sem1))
         #print(im_global.shape)
         #return im, path, s, im0s, vid_cap
         #return im_global
-        if USE_TIME:
-            time.sleep(set_time_1)
+        #if USE_TIME:
+            #time.sleep(set_time_1)
 
 def Get_Frame_proc(dataset):
     
@@ -681,8 +703,8 @@ def Get_Frame_proc(dataset):
         #vid_cap_global = vid_cap
         #======Alister 2023-02-28 add queue================
         #========put get frame result to queue (process queue)=============
-        get_frame_proc_queue.put([im,path,im0s,s,vid_cap])
-        
+        get_frame_proc_queue.put([im,path,im0s]) #Root Cause : Here cost a lot of time 2023-03-02
+        #Root Cause : Here cost a lot of time Root Cause : Here cost a lot of time Root Cause : Here cost a lot of time
         print("1")
         
         during_get_frame = time.time() - get_frame_time
@@ -698,17 +720,20 @@ def Get_Frame_proc(dataset):
             time.sleep(set_time_1)
 
 
-def model_inference(visualize,save_dir,path,augment):
+def model_inference(model,visualize,save_dir,path,augment):
     #global pred_global
-    global model_global
+    #global model_global
     #global im_global
     pred_list = []
     while True:
         #============get frame queue=============================
+        q1_before_get = time.time()
         get_frame_data_from_queue = get_frame_queue.get()
-        im_queue,path_queue,im0s_queue,s_queue,vid_cap_queue = get_frame_data_from_queue
+        #im_queue,path_queue,im0s_queue,s_queue,vid_cap_queue = get_frame_data_from_queue
+        im_queue,path_queue,im0s_queue = get_frame_data_from_queue
         #print("[model_inference] sem1 befroe acquire: {}".format(sem1))
-        
+        during_q1_get = time.time() - q1_before_get
+        print("[TIME_LOG]during_q1_get : {} ms".format(during_q1_get*1000))
         #sem1.acquire() #sem1=0
         #if USE_SEM5:
             #sem5.acquire()
@@ -717,7 +742,7 @@ def model_inference(visualize,save_dir,path,augment):
         model_inference_time = time.time()
         # Directories
         visualize = increment_path(save_dir / Path(path).stem, mkdir=True) if visualize else False
-        pred = model_global(im_queue, augment=augment, visualize=visualize)
+        pred = model(im_queue, augment=augment, visualize=visualize)
       
         #pred_global = pred
         
@@ -725,17 +750,20 @@ def model_inference(visualize,save_dir,path,augment):
         #pred_global = pred
         #=================Alister add 2023-02-28======================== 
         #======put model inference result to queue======================
-        my_queue.put([im_queue,path_queue,s_queue,vid_cap_queue,pred,im0s_queue])
+        #my_queue.put([im_queue,path_queue,s_queue,vid_cap_queue,pred,im0s_queue])
+        mi_qput_start_time = time.time()
+        my_queue.put([im_queue,path_queue,pred,im0s_queue])
         #print("[model_inference]pred_global = {}".format(pred_global))
         #return pre2
-        
-        print("2")
+        during_mi_qput = time.time() - mi_qput_start_time
+        print("[TIME_LOG]during_mi_qput : {} ms".format(during_mi_qput*1000))
+        #print("2")
         
         during_model_inference = time.time() - model_inference_time
-        print("during_model_inference : {} ms".format(during_model_inference*1000))
+        print("[model_inference]during_model_inference : {} ms".format(during_model_inference*1000))
         
-        if USE_TIME:
-            time.sleep(set_time_2)
+        #if USE_TIME:
+            #time.sleep(set_time_2)
         
         #print("[model_inference] sem2 start release: {}".format(sem2))
         #sem2.release() #sem2=1
@@ -780,8 +808,8 @@ def model_inference_proc(model,visualize,save_dir,path,augment):
         during_model_inference = time.time() - model_inference_time
         print("during_model_inference : {} ms".format(during_model_inference*1000))
         
-        if USE_TIME:
-            time.sleep(set_time_2)
+        #if USE_TIME:
+            #time.sleep(set_time_2)
         
         #print("[model_inference] sem2 start release: {}".format(sem2))
         #sem2.release() #sem2=1
@@ -901,7 +929,7 @@ def Process_Prediction(pred=None,
                         f.write(('%g ' * len(line)).rstrip() % line + '\n')
                 #Alister add 2023-02-21    save anomaly images    
                 c = int(cls)  # integer class
-                if c==0 and conf<0.70 and filter_line_label==False:
+                if c==0 and conf<0.70 and filter_line_label==False: #test c==1 
                     save_anomaly_img = True
                     now = datetime.now()
                     s_time = datetime.strftime(now,'%y-%m-%d-%H-%M-%S')
@@ -911,7 +939,7 @@ def Process_Prediction(pred=None,
                     c = int(cls)  # integer class
                     label = None if hide_labels else (names[c] if hide_conf else f'{names[c]} {conf:.2f}')
                     #annotator.box_label(xyxy, label, color=colors(c, True))
-                    if c==0 and filter_line_label==False:
+                    if c==0 and filter_line_label==False: #noline (test)
                         if conf<0.70:
                             annotator.box_label(xyxy, label+" anomaly" , color=(0,0,255))
                         else:
@@ -976,12 +1004,12 @@ def Process_Prediction(pred=None,
                             
                         save_path = str(Path(save_path).with_suffix('.avi'))  # force *.mp4 suffix on results videos
                         #fourcc = cv2.VideoWriter_fourcc(*'MJPG')
-                        vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'MJPG'), fps, (w, h))
+                        #vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'MJPG'), fps, (w, h))
                         #print("start print save path")
                         #save_path = str(Path(save_path).with_suffix('.avi'))  # force *.mp4 suffix on results videos
                         #print("save_path : {}".format(save_path))
                         #vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'XVID'), fps, (w, h))
-                        #vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc('H', '2', '6', '4'), fps, (w, h),True)
+                        vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc('H', '2', '6', '4'), fps, (w, h),True)
                     vid_writer[i].write(im0)
                     
                     if save_anomaly_img:
@@ -1042,14 +1070,23 @@ def PostProcess(my_queue,
     #cv2.namedWindow("test", cv2.WINDOW_NORMAL | cv2.WINDOW_KEEPRATIO)  # allow window resize (Linux)
     #cv2.resizeWindow("test", im0.shape[1], im0.shape[0])
     #pred_global_new = []
+    global s_global
+    global vid_cap_global 
     while True:
         #print("[PostProcess] sem2 before acquire")
         
         #sem2.acquire() #sem2=0
         #=======Alister add 2023-02-27=============
         q_data=my_queue.get()
-        im_from_queue,path_from_queue,s_from_queue,vid_cap_from_queue,pred_from_queue,im0s_from_queue = q_data
-        my_queue.task_done()
+        #im_from_queue,path_from_queue,s_from_queue,vid_cap_from_queue,pred_from_queue,im0s_from_queue = q_data
+        im_from_queue,path_from_queue,pred_from_queue,im0s_from_queue = q_data
+        #Alister add 2023-03-02 #Failed
+        #====================================================
+        #parameter_data = parameter_queue.get()
+        #s_from_queue,vid_cap_from_queue = parameter_data
+        #====================================================
+        
+        #my_queue.task_done()
         #==========================================
         #print("[PostProcess]pred_global: {}".format(pred_global))
         #pred_global.reverse()
@@ -1074,7 +1111,7 @@ def PostProcess(my_queue,
                             path=path_from_queue,
                             im0s=im0s_from_queue,
                             dataset = dataset,
-                            s=s_from_queue,
+                            s=s_global,#s_from_queue,
                             save_dir=save_dir,
                             im =im_from_queue,
                             save_crop=False,
@@ -1087,18 +1124,32 @@ def PostProcess(my_queue,
                             hide_labels=hide_labels,
                             hide_conf=hide_conf,
                             dt=dt,
-                            vid_cap=vid_cap,
+                            vid_cap=vid_cap_global,
                             vid_path=vid_path,
                             vid_writer=vid_writer)
         #print("[PostProcess] after Process_Prediction")
-        print("3")
-        
+        #print("3")
+        #===============================================================================================================================
         during_post_process = time.time() - post_process_time
-        print("[PostProcess]during_post_process: {} ms".format(during_post_process*1000))
-        if USE_SEM5:
-            sem5.release()
-        if USE_TIME:
-            time.sleep(set_time_3)
+        #print("=======================================================================================")
+        global Total_postprocess_time
+        global frame_count_global
+        Total_postprocess_time+=during_post_process
+        Avg_postprocess_time = Total_postprocess_time/frame_count_global
+        FPS = int(1000.0/float(Avg_postprocess_time*1000))
+        frame_count_global+=1
+        print("==================[PostProcess]during_post_process: {} ms======================".format(during_post_process*1000))
+        print("=======f:{}=Total time:{}==========[PostProcess]Avg_postprocess_time: {} ms====FPS:{}==================".format(frame_count_global,
+                                                                                                                         Total_postprocess_time,
+                                                                                                                         Avg_postprocess_time*1000,
+                                                                                                                               FPS))
+        #===============================================================================================================================
+        #during_post_process = time.time() - post_process_time
+        #print("[PostProcess]during_post_process: {} ms".format(during_post_process*1000))
+        #if USE_SEM5:
+            #sem5.release()
+        #if USE_TIME:
+            #time.sleep(set_time_3)
             
             
 def PostProcess_proc(my_queue,
@@ -1235,7 +1286,7 @@ if __name__ == "__main__":
     imgsz = opt.imgsz
     save_conf = opt.save_conf
     nosave = opt.nosave
-    view_img = True #opt.view_img
+    view_img = opt.view_img
     hide_labels = opt.hide_labels
     hide_conf = opt.hide_conf
     source = opt.source
@@ -1250,7 +1301,7 @@ if __name__ == "__main__":
                                                    imgsz=imgsz)
     
     
-    model_global = model
+    #model_global = model
     
     dataset, bs, source = load_dataloader(source=source,
                                     nosave=False,
@@ -1298,7 +1349,7 @@ if __name__ == "__main__":
     # Directories
     save_dir = increment_path(Path(project) / name, exist_ok=exist_ok)  # increment run
     (save_dir / 'labels' if save_txt else save_dir).mkdir(parents=True, exist_ok=True)  # make dir
-    model_global.warmup(imgsz=(1 if pt else bs, 3, *imgsz))  # warmup
+    model.warmup(imgsz=(1 if pt else bs, 3, *imgsz))  # warmup
     seen, windows, dt = 0, [], (Profile(), Profile(), Profile())
     if MULTI_PROCESS:
         #================Alister add 2023-02-28 multi process code================================================================
@@ -1386,7 +1437,7 @@ if __name__ == "__main__":
         #thread model_inference
         #=======================
         print("before t2")
-        t2 = threading.Thread(target = model_inference,args=(visualize,save_dir,None,augment,))
+        t2 = threading.Thread(target = model_inference,args=(model, visualize,save_dir,None,augment,))
         with dt[1]:
             t2.start()
         print("after t2.start()")
