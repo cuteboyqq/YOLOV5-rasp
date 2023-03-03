@@ -83,8 +83,8 @@ class Annotator:
             self.im = im
         self.lw = line_width or max(round(sum(im.shape) / 2 * 0.003), 2)  # line width
     
-    def time_label(self,color=(128, 128, 128), txt_color=(0, 0, 255)):
-        tf = max(self.lw - 1, 1)  # font thickness
+    def time_label(self,color=(128, 128, 128), txt_color=(0, 0, 255),w=1280.0,h=720.0):
+        tf = max(self.lw - 2, 1)  # font thickness
         now = datetime.now()
         s_time = datetime.strftime(now,'%y-%m-%d %H:%M:%S')
         s_time = str(s_time)
@@ -92,10 +92,10 @@ class Annotator:
             self.draw.text((50,320), s_time, fill=txt_color, font=self.font)
         else:
             cv2.putText(self.im,
-                        s_time, (50,320),0,
-                        self.lw / 3,
+                        s_time, (50,650),0,
+                        self.lw / 4,
                         txt_color,
-                        thickness=4,
+                        thickness=tf,
                         lineType=cv2.LINE_AA)
     
     def box_label(self, box, label='', color=(128, 128, 128), txt_color=(255, 255, 255)):

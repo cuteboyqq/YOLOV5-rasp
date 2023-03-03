@@ -33,6 +33,10 @@ from utils.augmentations import (Albumentations, augment_hsv, classify_albumenta
 from utils.general import (DATASETS_DIR, LOGGER, NUM_THREADS, check_dataset, check_requirements, check_yaml, clean_str,
                            cv2, is_colab, is_kaggle, segments2boxes, xyn2xy, xywh2xyxy, xywhn2xyxy, xyxy2xywhn)
 from utils.torch_utils import torch_distributed_zero_first
+#Alister add 2023-03-03
+from utils.plots import Annotator, colors, save_one_box, get_crop_image
+
+from datetime import datetime
 
 # Parameters
 HELP_URL = 'See https://github.com/ultralytics/yolov5/wiki/Train-Custom-Data'
@@ -43,6 +47,10 @@ LOCAL_RANK = int(os.getenv('LOCAL_RANK', -1))  # https://pytorch.org/docs/stable
 RANK = int(os.getenv('RANK', -1))
 PIN_MEMORY = str(os.getenv('PIN_MEMORY', True)).lower() == 'true'  # global pin_memory for dataloaders
 
+SAVE_RAW_STREAM=True
+SET_FPS=12
+SET_W=1280
+SET_H=720
 # Get orientation exif tag
 for orientation in ExifTags.TAGS.keys():
     if ExifTags.TAGS[orientation] == 'Orientation':
@@ -349,11 +357,15 @@ class LoadStreams:
         self.sources = [clean_str(x) for x in sources]  # clean source names for later
         self.imgs, self.fps, self.frames, self.threads = [None] * n, [0] * n, [0] * n, [None] * n
         #Alister add 2023-02-28
-        save_path = r"C:/GitHub_Code/cuteboyqq/YOLO/2023-02-28-raw.avi"
-        w,h=1280,720
-        fps=20
-        vw = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'MJPG'), fps, (w, h))
-        #save_path = str(Path(save_path).with_suffix('.mp4'))  # force *.mp4 suffix on results videos
+        if SAVE_RAW_STREAM:
+            now = datetime.now()
+            s_time = datetime.strftime(now,'%y-%m-%d %H:%M:%S')
+            s_time = str(s_time)
+            save_path = r"/home/ali/Desktop/YOLOV5-rasp/"+ s_time + ".avi"
+            w,h=SET_W,SET_H
+            fps=SET_FPS
+            vw = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'MJPG'), fps, (w, h))
+            #save_path = str(Path(save_path).with_suffix('.mp4'))  # force *.mp4 suffix on results videos
         
         for i, s in enumerate(sources):  # index, source
             # Start thread to read frames from video stream
@@ -369,8 +381,8 @@ class LoadStreams:
             cap = cv2.VideoCapture(s)
             assert cap.isOpened(), f'{st}Failed to open {s}'
             #Alister 2022-12-22
-            cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
-            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH, SET_W)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, SET_H)
             w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
             h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
             fps = cap.get(cv2.CAP_PROP_FPS)  # warning: may return 0 or nan
@@ -378,6 +390,8 @@ class LoadStreams:
             self.fps[i] = max((fps if math.isfinite(fps) else 0) % 100, 0) or 30  # 30 FPS fallback
             
             _, self.imgs[i] = cap.read()  # guarantee first frame
+            if not SAVE_RAW_STREAM:
+                vw=None
             self.threads[i] = Thread(target=self.update, args=([i, cap, s, vw]), daemon=True)
             LOGGER.info(f"{st} Success ({self.frames[i]} frames {w}x{h} at {self.fps[i]:.2f} FPS)")
             self.threads[i].start()
@@ -401,7 +415,11 @@ class LoadStreams:
                 success, im = cap.retrieve()
                 if success:
                     self.imgs[i] = im
-                    vw.write(im)
+                    if SAVE_RAW_STREAM:
+                        names="test_2023_03_03"
+                        annotator = Annotator(im, line_width=3, example=str(names))
+                        annotator.time_label()
+                        vw.write(im)
                 else:
                     LOGGER.warning('WARNING ⚠️ Video stream unresponsive, please check your IP camera connection.')
                     self.imgs[i] = np.zeros_like(self.imgs[i])
@@ -420,14 +438,17 @@ class LoadStreams:
             cv2.destroyAllWindows()
             raise StopIteration
 
-        im0 = self.imgs.copy()
-        #im0 = self.imgs #Alister modified 2023-01-12
-        if self.transforms:
-            im = np.stack([self.transforms(x) for x in im0])  # transforms
-        else:
-            im = np.stack([letterbox(x, self.img_size, stride=self.stride, auto=self.auto)[0] for x in im0])  # resize
-            im = im[..., ::-1].transpose((0, 3, 1, 2))  # BGR to RGB, BHWC to BCHW
-            im = np.ascontiguousarray(im)  # contiguous
+        #im0 = self.imgs.copy()
+        im0 = self.imgs #Alister modified 2023-01-12
+        #if self.transforms:
+            #im = np.stack([self.transforms(x) for x in im0])  # transforms
+        #else:
+        im = np.stack([letterbox(x, self.img_size, stride=self.stride, auto=self.auto)[0] for x in im0])  # resize
+        im = im[..., ::-1].transpose((0, 3, 1, 2))  # BGR to RGB, BHWC to BCHW
+        #im = im.transpose((0, 3, 1, 2))  # BHWC to BCHW
+        #print("[__next__]im shape : {}".format(im.shape))
+        im = np.ascontiguousarray(im)  # contiguous
+        #print("[__next__]im.ascontiguousarray shape : {}".format(im.shape))
 
         return self.sources, im, im0, None, ''
 
