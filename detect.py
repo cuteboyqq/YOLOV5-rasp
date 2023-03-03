@@ -67,8 +67,8 @@ USE_SEM4=True
 USE_SEM5=False
 USE_TIME=False
 FPS_SET=22
-SET_W=1600
-SET_H=900
+SET_W=1280
+SET_H=720
 set_time_2 = 0.001
 set_time_1 = 0.001
 set_time_3 = 0.001
@@ -260,10 +260,10 @@ def run(
 
 def parse_opt():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--weights', nargs='+', type=str, default= r'/home/ali/Desktop/YOLOV5-rasp/runs/train/f192_2022-12-29-4cls/weights/best.pt', help='model path(s)')
+    parser.add_argument('--weights', nargs='+', type=str, default= r'/home/ali/GitHub_Code/cuteboyqq/YOLO/YOLOV5-rasp/runs/train/f192_2022-12-29-4cls/weights/best.pt', help='model path(s)')
     #parser.add_argument('--source', type=str, default=r'/home/ali/factory_video/ori_video_ver2.mp4', help='file/dir/URL/glob, 0 for webcam')
     parser.add_argument('--source', type=str, default='0', help='file/dir/URL/glob, 0 for webcam')
-    parser.add_argument('--data', type=str, default=r'/home/ali/Desktop/YOLOV5-rasp/data/factory_new2.yaml', help='(optional) dataset.yaml path')
+    parser.add_argument('--data', type=str, default=r'/home/ali/GitHub_Code/cuteboyqq/YOLO/YOLOV5-rasp/data/factory_new2.yaml', help='(optional) dataset.yaml path')
     parser.add_argument('--imgsz', '--img', '--img-size', nargs='+', type=int, default=[192], help='inference size h,w')
     parser.add_argument('--conf-thres', type=float, default=0.25, help='confidence threshold')
     parser.add_argument('--iou-thres', type=float, default=0.45, help='NMS IoU threshold')
@@ -627,8 +627,9 @@ def Get_Frame(dataset):
         #======Alister 2023-02-28 add queue================
         #========put get frame result to queue=============
         q1_time = time.time()
-        #get_frame_queue.put([im,path,im0s,s,vid_cap])#Root Cause : Here cost a lot of time 2023-03-02
-        get_frame_queue.put([im,path,im0s])#Root Cause : Here cost a lot of time 2023-03-02
+        get_frame_queue.put([im,path,im0s,s,vid_cap])#Root Cause : Here cost a lot of time 2023-03-02
+        #get_frame_queue.put([im,path,im0s])#Root Cause : Here cost a lot of time 2023-03-02
+        #get_frame_queue.put(path)#Root Cause : Here cost a lot of time 2023-03-02
         during_q1_put = time.time() - q1_time
         print("[TIME_LOG]during_q1_put : {} ms".format(during_q1_put*1000))
         #print("1")
@@ -729,8 +730,9 @@ def model_inference(model,visualize,save_dir,path,augment):
         #============get frame queue=============================
         q1_before_get = time.time()
         get_frame_data_from_queue = get_frame_queue.get()
-        #im_queue,path_queue,im0s_queue,s_queue,vid_cap_queue = get_frame_data_from_queue
-        im_queue,path_queue,im0s_queue = get_frame_data_from_queue
+        im_queue,path_queue,im0s_queue,s_queue,vid_cap_queue = get_frame_data_from_queue
+        #im_queue,path_queue,im0s_queue = get_frame_data_from_queue
+        #path_queue = get_frame_data_from_queue
         #print("[model_inference] sem1 befroe acquire: {}".format(sem1))
         during_q1_get = time.time() - q1_before_get
         print("[TIME_LOG]during_q1_get : {} ms".format(during_q1_get*1000))
@@ -752,7 +754,8 @@ def model_inference(model,visualize,save_dir,path,augment):
         #======put model inference result to queue======================
         #my_queue.put([im_queue,path_queue,s_queue,vid_cap_queue,pred,im0s_queue])
         mi_qput_start_time = time.time()
-        my_queue.put([im_queue,path_queue,pred,im0s_queue])
+        my_queue.put([im_queue,path_queue,s_queue,vid_cap_queue,pred,im0s_queue])
+        #my_queue.put([im_queue,path_queue,pred,im0s_queue])
         #print("[model_inference]pred_global = {}".format(pred_global))
         #return pre2
         during_mi_qput = time.time() - mi_qput_start_time
@@ -989,8 +992,8 @@ def Process_Prediction(pred=None,
                             vid_writer[i].release()  # release previous video writer
                         if vid_cap:  # video
                             fps = vid_cap.get(cv2.CAP_PROP_FPS)
-                            vid_cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1600)
-                            vid_cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 900)
+                            vid_cap.set(cv2.CAP_PROP_FRAME_WIDTH, SET_W)
+                            vid_cap.set(cv2.CAP_PROP_FRAME_HEIGHT, SET_H)
                             w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
                             h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
                             print("vidcap w:{} h:{}".format(w,h))
@@ -1004,12 +1007,12 @@ def Process_Prediction(pred=None,
                             
                         save_path = str(Path(save_path).with_suffix('.avi'))  # force *.mp4 suffix on results videos
                         #fourcc = cv2.VideoWriter_fourcc(*'MJPG')
-                        #vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'MJPG'), fps, (w, h))
+                        vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'MJPG'), fps, (w, h))
                         #print("start print save path")
                         #save_path = str(Path(save_path).with_suffix('.avi'))  # force *.mp4 suffix on results videos
                         #print("save_path : {}".format(save_path))
                         #vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'XVID'), fps, (w, h))
-                        vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc('H', '2', '6', '4'), fps, (w, h),True)
+                        #vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc('H', '2', '6', '4'), fps, (w, h),True)
                     vid_writer[i].write(im0)
                     
                     if save_anomaly_img:
@@ -1078,8 +1081,8 @@ def PostProcess(my_queue,
         #sem2.acquire() #sem2=0
         #=======Alister add 2023-02-27=============
         q_data=my_queue.get()
-        #im_from_queue,path_from_queue,s_from_queue,vid_cap_from_queue,pred_from_queue,im0s_from_queue = q_data
-        im_from_queue,path_from_queue,pred_from_queue,im0s_from_queue = q_data
+        im_from_queue,path_from_queue,s_from_queue,vid_cap_from_queue,pred_from_queue,im0s_from_queue = q_data
+        #im_from_queue,path_from_queue,pred_from_queue,im0s_from_queue = q_data
         #Alister add 2023-03-02 #Failed
         #====================================================
         #parameter_data = parameter_queue.get()
@@ -1111,7 +1114,7 @@ def PostProcess(my_queue,
                             path=path_from_queue,
                             im0s=im0s_from_queue,
                             dataset = dataset,
-                            s=s_global,#s_from_queue,
+                            s=s_from_queue,#s_from_queue,
                             save_dir=save_dir,
                             im =im_from_queue,
                             save_crop=False,
@@ -1124,7 +1127,7 @@ def PostProcess(my_queue,
                             hide_labels=hide_labels,
                             hide_conf=hide_conf,
                             dt=dt,
-                            vid_cap=vid_cap_global,
+                            vid_cap=vid_cap_from_queue,
                             vid_path=vid_path,
                             vid_writer=vid_writer)
         #print("[PostProcess] after Process_Prediction")
