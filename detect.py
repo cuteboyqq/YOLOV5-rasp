@@ -62,13 +62,13 @@ from multiprocessing import Queue
 get_frame_proc_queue = Queue()
 my_proc_queue = Queue()
 #================================================================================
-SAVE_AI_RESULT_STREAM=True
+SAVE_AI_RESULT_STREAM=False
 USE_SEM4=True
 USE_SEM5=False
 USE_TIME=False
 FPS_SET=22
-SET_W=1600
-SET_H=900
+SET_W=1280
+SET_H=720
 set_time_2 = 0.001
 set_time_1 = 0.001
 set_time_3 = 0.001
@@ -94,7 +94,7 @@ get_frame_and_model_infer_queue = queue.Queue(30)
 MULTI_PROCESS=False
 MULTI_THREAD=True
 frame_cnt = 1
-THREE_THREADS=False #if False, using two threads
+THREE_THREADS=True #if False, using two threads
 #@smart_inference_mode()
 def run(
         weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
@@ -1174,16 +1174,16 @@ def Process_Prediction(pred=None,
                         vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc('H', '2', '6', '4'), fps, (w, h),True)
                     vid_writer[i].write(im0)
                     
-                    if save_anomaly_img:
-                        img_dir = os.path.dirname(save_path)
-                        img_name = s_time + '.jpg'
-                        folder_name = 'anomaly_img'
-                        if not os.path.exists(os.path.join(img_dir,folder_name)):
-                            os.makedirs(os.path.join(img_dir,folder_name))
-                        img_path = os.path.join(img_dir,folder_name,img_name)
-                        #im0_resize = cv2.resize(im0,(1920,1080))
-                        #cv2.imwrite(img_path, im0_resize)
-                        cv2.imwrite(img_path, im0)
+        if save_anomaly_img:
+            img_dir = os.path.dirname(save_path)
+            img_name = s_time + '.jpg'
+            folder_name = 'anomaly_img'
+            if not os.path.exists(os.path.join(img_dir,folder_name)):
+                os.makedirs(os.path.join(img_dir,folder_name))
+            img_path = os.path.join(img_dir,folder_name,img_name)
+            #im0_resize = cv2.resize(im0,(1920,1080))
+            #cv2.imwrite(img_path, im0_resize)
+            cv2.imwrite(img_path, im0)
         
         during_save_img = time.time() - save_img_time
         print("[Process_Prediction]during_save_img: {} ms".format(during_save_img*1000))
