@@ -418,6 +418,8 @@ class LoadStreams:
                     if SAVE_RAW_STREAM:
                         names="test_2023_03_03"
                         annotator = Annotator(im, line_width=3, example=str(names))
+                        if not SET_H is 720:
+                            im = im[..., ::-1]
                         annotator.time_label()
                         vw.write(im)
                 else:
