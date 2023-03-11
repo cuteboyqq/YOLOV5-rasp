@@ -62,11 +62,11 @@ from multiprocessing import Queue
 get_frame_proc_queue = Queue()
 my_proc_queue = Queue()
 #================================================================================
-SAVE_AI_RESULT_STREAM=False
+SAVE_AI_RESULT_STREAM=True
 USE_SEM4=True
 USE_SEM5=False
 USE_TIME=False
-FPS_SET=22
+FPS_SET=10
 SET_W=1280
 SET_H=720
 set_time_2 = 0.001
@@ -79,6 +79,14 @@ s_global=None
 vid_cap_global=None
 #pred_global=None
 model_global=None
+#Alister add 2023-03-08
+during_get_frame_global=None
+during_model_inference_global=None
+
+#Alister add 2023-03-09
+#get_frame_list_global=[]
+
+
 anomaly_img_count=0
 sem1 = threading.Semaphore(0)
 sem2 = threading.Semaphore(0)
@@ -87,14 +95,19 @@ sem4 = threading.Semaphore(1)
 sem5 = threading.Semaphore(1)
 
 # 建立佇列
-get_frame_queue = queue.Queue(30)
-my_queue = queue.Queue(30)
-parameter_queue = queue.Queue(30)
-get_frame_and_model_infer_queue = queue.Queue(30)
+queue_size1=60
+queue_size2=60
+get_frame_queue = queue.Queue(queue_size1)
+my_queue = queue.Queue(queue_size2)
+parameter_queue = queue.Queue(queue_size2)
+get_frame_and_model_infer_queue = queue.Queue(queue_size2)
 MULTI_PROCESS=False
 MULTI_THREAD=True
 frame_cnt = 1
 THREE_THREADS=True #if False, using two threads
+SHOW_QUEUE_TIME_LOG = False
+
+
 #@smart_inference_mode()
 def run(
         weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
@@ -786,17 +799,22 @@ def Get_Frame(dataset):
         #im0s_global = im0s
         #s_global = s
         #vid_cap_global = vid_cap
+            
+        #=========Alister 2023-03-09 add global list=========
+        #global get_frame_list_global
+        #get_frame_list_global.append(im)
+        #print("[Get_Frame]len(get_frame_list_global) : {}".format(len(get_frame_list_global)))
         #======Alister 2023-02-28 add queue================
         #========put get frame result to queue=============
         q1_time = time.time()
-        #get_frame_queue.put([im,path,im0s,s,vid_cap])#Root Cause : Here cost a lot of time 2023-03-02
-        get_frame_queue.put([im,path,im0s])#Root Cause : Here cost a lot of time 2023-03-02
+        get_frame_queue.put([im,path,im0s,s,vid_cap])#Root Cause : Here cost a lot of time 2023-03-02
+        #get_frame_queue.put([im,path,im0s])#Root Cause : Here cost a lot of time 2023-03-02
         during_q1_put = time.time() - q1_time
-        print("[TIME_LOG]during_q1_put : {} ms".format(during_q1_put*1000))
+        if SHOW_QUEUE_TIME_LOG:
+            print("[TIME_LOG]during_q1_put : {} ms".format(during_q1_put*1000))
         #print("1")
         
-        during_get_frame = time.time() - get_frame_time
-        print("[Get_Frame]during_get_frame : {} ms".format(during_get_frame*1000))
+        
         global frame_cnt
         #==========Alister add 2023-03-02============
         if frame_cnt==1:
@@ -817,7 +835,14 @@ def Get_Frame(dataset):
         #return im_global
         #if USE_TIME:
             #time.sleep(set_time_1)
-
+        
+        during_get_frame = time.time() - get_frame_time
+        # Alister aff 2023-03-08
+        global during_get_frame_global
+        during_get_frame_global = during_get_frame
+        print("[Get_Frame]during_get_frame : {} ms".format(during_get_frame*1000))
+        
+        
 def Get_Frame_proc(dataset):
     
     #global im_global
@@ -886,24 +911,46 @@ def model_inference(model,visualize,save_dir,path,augment):
     #global pred_global
     #global model_global
     #global im_global
+    #global get_frame_list_global
     pred_list = []
+    #list_global_pop_im = None
     while True:
+        model_inference_time = time.time()
+        
+        #=========Alister 2023-03-09 add global list=========
+        
+        #get_frame_list_global.reverse()
+        #print("[model_inference]len(get_frame_list_global) : {}".format(len(get_frame_list_global)))
+        #if len(get_frame_list_global)>0:
+            #list_global_pop_im = get_frame_list_global.pop(0)
+            #print("list_global_pop_im : {}".format(list_global_pop_im))
+    
+        
         #============get frame queue=============================
         q1_before_get = time.time()
         get_frame_data_from_queue = get_frame_queue.get()
-        #im_queue,path_queue,im0s_queue,s_queue,vid_cap_queue = get_frame_data_from_queue
-        im_queue,path_queue,im0s_queue = get_frame_data_from_queue
+        
+        im_queue,path_queue,im0s_queue,s_queue,vid_cap_queue = get_frame_data_from_queue
+        #im_queue,path_queue,im0s_queue = get_frame_data_from_queue
+        #if len(get_frame_list_global) == 0:
+            #list_global_pop_im = im_queue
         #print("[model_inference] sem1 befroe acquire: {}".format(sem1))
         during_q1_get = time.time() - q1_before_get
-        print("[TIME_LOG]during_q1_get : {} ms".format(during_q1_get*1000))
+        if SHOW_QUEUE_TIME_LOG:
+            print("[TIME_LOG]during_q1_get : {} ms".format(during_q1_get*1000))
         #sem1.acquire() #sem1=0
         #if USE_SEM5:
             #sem5.acquire()
         #sem5.acquire()
         #print("[model_inference] sem1 after acquire: {}".format(sem1))
-        model_inference_time = time.time()
+        
         # Directories
         visualize = increment_path(save_dir / Path(path).stem, mkdir=True) if visualize else False
+        #pred = model(im_queue, augment=augment, visualize=visualize)
+        #if not list_global_pop_im==None:
+            #print("[model_inference]im using list_global~~~~")
+            #pred = model(list_global_pop_im, augment=augment, visualize=visualize)
+        #else:
         pred = model(im_queue, augment=augment, visualize=visualize)
       
         #pred_global = pred
@@ -912,16 +959,20 @@ def model_inference(model,visualize,save_dir,path,augment):
         #pred_global = pred
         #=================Alister add 2023-02-28======================== 
         #======put model inference result to queue======================
-        #my_queue.put([im_queue,path_queue,s_queue,vid_cap_queue,pred,im0s_queue])
+        
         mi_qput_start_time = time.time()
-        my_queue.put([im_queue,path_queue,pred,im0s_queue])
+        my_queue.put([im_queue,path_queue,s_queue,vid_cap_queue,pred,im0s_queue])
+        #my_queue.put([im_queue,path_queue,pred,im0s_queue])
         #print("[model_inference]pred_global = {}".format(pred_global))
         #return pre2
         during_mi_qput = time.time() - mi_qput_start_time
-        print("[TIME_LOG]during_mi_qput : {} ms".format(during_mi_qput*1000))
+        if SHOW_QUEUE_TIME_LOG:
+            print("[TIME_LOG]during_mi_qput : {} ms".format(during_mi_qput*1000))
         #print("2")
         
         during_model_inference = time.time() - model_inference_time
+        global during_model_inference_global
+        during_model_inference_global = during_model_inference
         print("[model_inference]during_model_inference : {} ms".format(during_model_inference*1000))
         
         #if USE_TIME:
@@ -1023,6 +1074,7 @@ def Process_Prediction(pred=None,
         seen += 1
         if webcam:  # batch_size >= 1
             p, im0, frame = path[i], im0s[i].copy(), dataset.count
+            
             #s += f'{i}: '
         else:
             p, im0, frame = path, im0s.copy(), getattr(dataset, 'frame', 0)
@@ -1235,13 +1287,14 @@ def PostProcess(my_queue,
     global s_global
     global vid_cap_global 
     while True:
+        post_process_time = time.time()
         #print("[PostProcess] sem2 before acquire")
         
         #sem2.acquire() #sem2=0
         #=======Alister add 2023-02-27=============
         q_data=my_queue.get()
-        #im_from_queue,path_from_queue,s_from_queue,vid_cap_from_queue,pred_from_queue,im0s_from_queue = q_data
-        im_from_queue,path_from_queue,pred_from_queue,im0s_from_queue = q_data
+        im_from_queue,path_from_queue,s_from_queue,vid_cap_from_queue,pred_from_queue,im0s_from_queue = q_data
+        #im_from_queue,path_from_queue,pred_from_queue,im0s_from_queue = q_data
         #Alister add 2023-03-02 #Failed
         #====================================================
         #parameter_data = parameter_queue.get()
@@ -1254,7 +1307,7 @@ def PostProcess(my_queue,
         #pred_global.reverse()
         #print("[PostProcess]pred_global.reverse() : {}".format(pred_global))
         
-        post_process_time = time.time()
+        
         #print("[PostProcess] sem2 after acquire")
         nms_time = time.time()
         #print("[PostProcess] before nms")
@@ -1273,7 +1326,7 @@ def PostProcess(my_queue,
                             path=path_from_queue,
                             im0s=im0s_from_queue,
                             dataset = dataset,
-                            s=s_global,#s_from_queue,
+                            s=s_from_queue,#s_from_queue,
                             save_dir=save_dir,
                             im =im_from_queue,
                             save_crop=False,
@@ -1286,7 +1339,7 @@ def PostProcess(my_queue,
                             hide_labels=hide_labels,
                             hide_conf=hide_conf,
                             dt=dt,
-                            vid_cap=vid_cap_global,
+                            vid_cap=vid_cap_from_queue,
                             vid_path=vid_path,
                             vid_writer=vid_writer)
         #print("[PostProcess] after Process_Prediction")
@@ -1294,15 +1347,33 @@ def PostProcess(my_queue,
         #===============================================================================================================================
         during_post_process = time.time() - post_process_time
         #print("=======================================================================================")
+        
+        #Alister add 2023-03-08
+        global during_get_frame_global
+        global during_model_inference_global
+        
+        print("[Global]get_frame:{}ms".format(during_get_frame_global*1000))
+        print("[Global]model_inference:{}ms".format(during_model_inference_global*1000))
+        Max_time = 0
+        if during_model_inference_global>during_get_frame_global:
+            Max_time = during_model_inference_global
+        else:
+            Max_time = during_get_frame_global
+        
+        if during_post_process>Max_time:
+            Max_time = during_post_process
+        
         global Total_postprocess_time
         global frame_count_global
-        Total_postprocess_time+=during_post_process
+        Total_postprocess_time+=Max_time
+        #Total_postprocess_time+=during_post_process
         Avg_postprocess_time = Total_postprocess_time/frame_count_global
         FPS = int(1000.0/float(Avg_postprocess_time*1000))
         frame_count_global+=1
-        print("==================[PostProcess]during_post_process: {} ms======================".format(during_post_process*1000))
-        print("=======f:{}=Total time:{}==========[PostProcess]Avg_postprocess_time: {} ms====FPS:{}==================".format(frame_count_global,
-                                                                                                                         Total_postprocess_time,
+        print("[PostProcess]during_post_process:{}ms".format(during_post_process*1000))
+        print("[Global]=============================================Max_time:{}ms=======================================".format(Max_time*1000))
+        print("=======f:{}=Total time:{}ms==========[PostProcess]Avg_one_frame_time: {} ms====FPS:{}==================".format(frame_count_global,
+                                                                                                                         Total_postprocess_time*1000,
                                                                                                                          Avg_postprocess_time*1000,
                                                                                                                                FPS))
         #===============================================================================================================================
@@ -1407,9 +1478,25 @@ def PostProcess_2thread_version(my_queue,
         #===============================================================================================================================
         during_post_process = time.time() - post_process_time
         #print("=======================================================================================")
+        #Alister add 2023-03-08
+        global during_get_frame_global
+        global during_model_inference_global
+        
+        print("get_frame_global:{}ms".format(during_get_frame_global*1000))
+        print("model_inference_global:{}ms".format(during_model_inference_global*1000))
+        Max_time = 0
+        if during_model_inference_global>during_get_frame_global:
+            Max_time = during_model_inference_global
+        else:
+            Max_time = during_get_frame_global
+        
+        if during_post_process>Max_time:
+            Max_time = during_post_process
+        
         global Total_postprocess_time
         global frame_count_global
-        Total_postprocess_time+=during_post_process
+        Total_postprocess_time+=Max_time
+        #Total_postprocess_time+=during_post_process
         Avg_postprocess_time = Total_postprocess_time/frame_count_global
         FPS = int(1000.0/float(Avg_postprocess_time*1000))
         frame_count_global+=1
