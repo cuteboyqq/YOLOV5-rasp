@@ -67,8 +67,9 @@ USE_SEM4=True
 USE_SEM5=False
 USE_TIME=False
 FPS_SET=10
-SET_W=1280
-SET_H=720
+SET_W=1920
+SET_H=1080
+fr_cnt=0
 set_time_2 = 0.001
 set_time_1 = 0.001
 set_time_3 = 0.001
@@ -93,6 +94,11 @@ sem2 = threading.Semaphore(0)
 sem3 = threading.Semaphore(0)
 sem4 = threading.Semaphore(1)
 sem5 = threading.Semaphore(1)
+
+# Alister 2023-03-11 add
+get_frame_sem = threading.Semaphore(1)
+model_inference_sem = threading.Semaphore(1)
+
 
 # 建立佇列
 queue_size1=60
@@ -807,8 +813,10 @@ def Get_Frame(dataset):
         #======Alister 2023-02-28 add queue================
         #========put get frame result to queue=============
         q1_time = time.time()
+        #get_frame_sem.acquire()
         get_frame_queue.put([im,path,im0s,s,vid_cap])#Root Cause : Here cost a lot of time 2023-03-02
         #get_frame_queue.put([im,path,im0s])#Root Cause : Here cost a lot of time 2023-03-02
+        #get_frame_sem.release()
         during_q1_put = time.time() - q1_time
         if SHOW_QUEUE_TIME_LOG:
             print("[TIME_LOG]during_q1_put : {} ms".format(during_q1_put*1000))
@@ -928,9 +936,11 @@ def model_inference(model,visualize,save_dir,path,augment):
         
         #============get frame queue=============================
         q1_before_get = time.time()
+        #get_frame_sem.acquire()
         get_frame_data_from_queue = get_frame_queue.get()
         
         im_queue,path_queue,im0s_queue,s_queue,vid_cap_queue = get_frame_data_from_queue
+        #get_frame_sem.release()
         #im_queue,path_queue,im0s_queue = get_frame_data_from_queue
         #if len(get_frame_list_global) == 0:
             #list_global_pop_im = im_queue
@@ -961,10 +971,12 @@ def model_inference(model,visualize,save_dir,path,augment):
         #======put model inference result to queue======================
         
         mi_qput_start_time = time.time()
+        #model_inference_sem.acquire()
         my_queue.put([im_queue,path_queue,s_queue,vid_cap_queue,pred,im0s_queue])
         #my_queue.put([im_queue,path_queue,pred,im0s_queue])
         #print("[model_inference]pred_global = {}".format(pred_global))
         #return pre2
+        #model_inference_sem.release()
         during_mi_qput = time.time() - mi_qput_start_time
         if SHOW_QUEUE_TIME_LOG:
             print("[TIME_LOG]during_mi_qput : {} ms".format(during_mi_qput*1000))
@@ -1064,11 +1076,13 @@ def Process_Prediction(pred=None,
     #global vid_cap_global
     save_anomaly_img = False
     global anomaly_img_count
+    global fr_cnt
     anomaly_img_count+=1
     seen, windows = 0, []
     is_url = source.lower().startswith(('rtsp://', 'rtmp://', 'http://', 'https://'))
     is_file = Path(source).suffix[1:] in (IMG_FORMATS + VID_FORMATS)
     webcam = source.isnumeric() or source.endswith('.txt') or (is_url and not is_file)
+    fr_cnt+=1
     for i, det in enumerate(pred):  # per image
         post_process_detail_time = time.time()
         seen += 1
@@ -1133,7 +1147,7 @@ def Process_Prediction(pred=None,
             #===============================================================================================================================================
                 
             #Alister add 2023-02-21 add time label
-            annotator.time_label()
+            annotator.time_label(frame_count=fr_cnt,txt_color=(128,256,0))
             # Write results
             for *xyxy, conf, cls in reversed(det):
                 if save_txt:  # Write to file
@@ -1203,8 +1217,8 @@ def Process_Prediction(pred=None,
                             vid_writer[i].release()  # release previous video writer
                         if vid_cap:  # video
                             fps = vid_cap.get(cv2.CAP_PROP_FPS)
-                            vid_cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1600)
-                            vid_cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 900)
+                            vid_cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
+                            vid_cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
                             w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
                             h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
                             print("vidcap w:{} h:{}".format(w,h))
@@ -1218,12 +1232,12 @@ def Process_Prediction(pred=None,
                             
                         save_path = str(Path(save_path).with_suffix('.avi'))  # force *.mp4 suffix on results videos
                         #fourcc = cv2.VideoWriter_fourcc(*'MJPG')
-                        #vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'MJPG'), fps, (w, h))
+                        vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'MJPG'), fps, (w, h))
                         #print("start print save path")
                         #save_path = str(Path(save_path).with_suffix('.avi'))  # force *.mp4 suffix on results videos
                         #print("save_path : {}".format(save_path))
                         #vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'XVID'), fps, (w, h))
-                        vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc('H', '2', '6', '4'), fps, (w, h),True)
+                        #vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc('H', '2', '6', '4'), fps, (w, h),True)
                     vid_writer[i].write(im0)
                     
         if save_anomaly_img:
@@ -1292,9 +1306,11 @@ def PostProcess(my_queue,
         
         #sem2.acquire() #sem2=0
         #=======Alister add 2023-02-27=============
+        #model_inference_sem.acquire()
         q_data=my_queue.get()
         im_from_queue,path_from_queue,s_from_queue,vid_cap_from_queue,pred_from_queue,im0s_from_queue = q_data
         #im_from_queue,path_from_queue,pred_from_queue,im0s_from_queue = q_data
+        #model_inference_sem.release()
         #Alister add 2023-03-02 #Failed
         #====================================================
         #parameter_data = parameter_queue.get()
