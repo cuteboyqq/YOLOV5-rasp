@@ -48,10 +48,10 @@ class MainWindow(QWidget):
         command_options = ""
         if "Save raw video" in selected_options:
             print("Save raw video")
-            command_options += " --weights runs/train/f192_2022-12-29-4cls/weights/best.pt --data data/factory_new2.yaml --img-size 192 --source 0 --name 2023-03-11 --view-img"
+            command_options += " --weights runs/train/f192_2022-12-29-4cls/weights/best.pt --data data/factory_new2.yaml --img-size 192 --source 0 --name 2023-03-11 --view-img --save-airesult"
             print(command_options)
         if "Save AI result video" in selected_options:
-            command_options += " --weights runs/train/f192_2022-12-29-4cls/weights/best.pt --data data/factory_new2.yaml --img-size 192 --source C:/factory_data/ori_video_ver2.mp4 --name 2023-03-11 --view-img"
+            command_options += " --weights runs/train/f192_2022-12-29-4cls/weights/best.pt --data data/factory_new2.yaml --img-size 192 --source C:/factory_data/ori_video_ver2.mp4 --name 2023-03-11 --view-img --save-airesult"
         if "Save anomaly images" in selected_options:
             command_options += " --weights runs/train/f192_2022-12-29-4cls/weights/best.pt --data data/factory_new2.yaml --img-size 192 --source C:/factory_data/ori_video_ver2.mp4 --name 2023-03-11 --view-img"
 
