@@ -295,6 +295,7 @@ def parse_opt():
     parser.add_argument('--save-conf', action='store_true', help='save confidences in --save-txt labels')
     parser.add_argument('--save-crop', action='store_true', help='save cropped prediction boxes')
     parser.add_argument('--nosave', action='store_true', help='do not save images/videos')
+    parser.add_argument('--save-airesult', action='store_true', help='save result images/videos')
     parser.add_argument('--classes', nargs='+', type=int, help='filter by class: --classes 0, or --classes 0 2 3')
     parser.add_argument('--agnostic-nms', action='store_true', help='class-agnostic NMS')
     parser.add_argument('--augment', action='store_true', help='augmented inference')
@@ -1070,7 +1071,8 @@ def Process_Prediction(pred=None,
                        dt=None,
                        vid_cap=None,
                        vid_path=None,
-                       vid_writer=None):
+                       vid_writer=None,
+                       save_ai_result=False):
     
     
     #global vid_cap_global
@@ -1204,7 +1206,7 @@ def Process_Prediction(pred=None,
         # Save results (image with detections)
         #print("save img : {}".format(save_img))
         save_img_time = time.time()
-        if SAVE_AI_RESULT_STREAM:
+        if save_ai_result:
         
             if save_img:
                 if dataset.mode == 'image':
@@ -1288,7 +1290,8 @@ def PostProcess(my_queue,
                 dt,
                 vid_cap,
                 vid_path,
-                vid_writer):
+                vid_writer,
+                save_ai_result):
     #global pred_global
     #global im0s_global
     #global path_global
@@ -1357,7 +1360,8 @@ def PostProcess(my_queue,
                             dt=dt,
                             vid_cap=vid_cap_from_queue,
                             vid_path=vid_path,
-                            vid_writer=vid_writer)
+                            vid_writer=vid_writer,
+                            save_ai_result=save_ai_result)
         #print("[PostProcess] after Process_Prediction")
         #print("3")
         #===============================================================================================================================
@@ -1422,7 +1426,8 @@ def PostProcess_2thread_version(my_queue,
                 dt,
                 vid_cap,
                 vid_path,
-                vid_writer):
+                vid_writer,
+                save_ai_result):
     #global pred_global
     #global im0s_global
     #global path_global
@@ -1488,7 +1493,8 @@ def PostProcess_2thread_version(my_queue,
                             dt=dt,
                             vid_cap=vid_cap_global,
                             vid_path=vid_path,
-                            vid_writer=vid_writer)
+                            vid_writer=vid_writer,
+                            save_ai_result=save_ai_result)
         #print("[PostProcess] after Process_Prediction")
         #print("3")
         #===============================================================================================================================
@@ -1669,6 +1675,7 @@ if __name__ == "__main__":
     hide_labels = opt.hide_labels
     hide_conf = opt.hide_conf
     source = opt.source
+    save_ai_result = opt.save_airesult
     
     save_img = not nosave and not source.endswith('.txt')  # save inference images
     
@@ -1852,7 +1859,8 @@ if __name__ == "__main__":
                                                             dt,
                                                             None,#vid_cap_global
                                                             vid_path,
-                                                            vid_writer,) )
+                                                            vid_writer,
+                                                            save_ai_result,) )
             
             print("Thread count: {}".format(threading.active_count()))
             with dt[2]:
