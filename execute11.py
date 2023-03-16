@@ -30,11 +30,11 @@ class MainWindow(QMainWindow):
 
         self.viewimg_checkbox = QCheckBox(self)
         self.viewimg_checkbox.setText("View Output Images")
-        self.viewimg_checkbox.setGeometry(50, 100, 150, 30)
+        self.viewimg_checkbox.setGeometry(50, 100, 200, 30)
 
         self.saveairesult_checkbox = QCheckBox(self)
         self.saveairesult_checkbox.setText("Save AI Results")
-        self.saveairesult_checkbox.setGeometry(200, 100, 150, 30)
+        self.saveairesult_checkbox.setGeometry(250, 100, 150, 30)
 
         self.browse_video_button = QPushButton(self)
         self.browse_video_button.setText("Browse Video")
@@ -164,22 +164,23 @@ class MainWindow(QMainWindow):
         source_type = self.source_combo.currentText()
         view_img = "--view-img" if self.viewimg_checkbox.isChecked() else ""
         save_airesult = "--save-airesult" if self.saveairesult_checkbox.isChecked() else ""
-        weights = "--weights runs/train/f192_3cls_Argos_2023-03-11/weights/best.pt"
+        weights = "--weights runs/train/f192_3cls_Argos_2023-03-11/weights/best-int8_edgetpu.tflite"
         img_size = "--img-size 192"
         data = "--data data/factory_new2.yaml"
         #video_path = "/home/ali/factory_video/ori_video_ver2.mp4"
+        detect_file = "detect-simple.py"
         if source_type == "Camera Stream":
-            command = f"python detect.py --source 0 {weights} {img_size} {data} {view_img} {save_airesult}"
+            command = f"python {detect_file} --source 0 {weights} {img_size} {data} {view_img} {save_airesult}"
         elif source_type == "Video Stream":
             if not self.video_path:
                QMessageBox.warning(self, "Warning", "Please select a video path.")
                return
-            command = f"python detect.py {weights} {img_size} {data} --source {self.video_path} {view_img} {save_airesult}"
+            command = f"python {detect_file} {weights} {img_size} {data} --source {self.video_path} {view_img} {save_airesult}"
         else:
             if not self.images_path:
                 QMessageBox.warning(self, "Warning", "Please select an image path.")
                 return
-            command = f"python detect.py {weights} {img_size} {data} --source {self.images_path} {view_img} {save_airesult}"
+            command = f"python {detect_file} {weights} {img_size} {data} --source {self.images_path} {view_img} {save_airesult}"
 
         process = subprocess.Popen(command.split(), stdout=subprocess.PIPE)
         output, error = process.communicate()
