@@ -48,7 +48,7 @@ RANK = int(os.getenv('RANK', -1))
 PIN_MEMORY = str(os.getenv('PIN_MEMORY', True)).lower() == 'true'  # global pin_memory for dataloaders
 
 SAVE_RAW_STREAM=True
-SET_FPS=12
+SET_FPS=20
 SET_W=1280
 SET_H=720
 # Get orientation exif tag
@@ -420,7 +420,7 @@ class LoadStreams:
                         annotator = Annotator(im, line_width=3, example=str(names))
                         if not SET_H is 720:
                             im = im[..., ::-1]
-                        annotator.time_label()
+                        annotator.time_label(frame_count=n,txt_color=(0,255,128))
                         vw.write(im)
                 else:
                     LOGGER.warning('WARNING ⚠️ Video stream unresponsive, please check your IP camera connection.')
