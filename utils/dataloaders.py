@@ -48,7 +48,7 @@ RANK = int(os.getenv('RANK', -1))
 PIN_MEMORY = str(os.getenv('PIN_MEMORY', True)).lower() == 'true'  # global pin_memory for dataloaders
 
 SAVE_RAW_STREAM=True
-SET_FPS=20
+SET_FPS=30
 SET_W=1280
 SET_H=720
 # Get orientation exif tag
@@ -361,10 +361,10 @@ class LoadStreams:
             now = datetime.now()
             s_time = datetime.strftime(now,'%y-%m-%d %H:%M:%S')
             s_time = str(s_time)
-            save_path = r"/home/ali/Desktop/YOLOV5-rasp/"+ s_time + ".avi"
+            save_path = r"/home/ali/GitHub_Code/cuteboyqq/YOLO/"+ s_time + ".avi"
             w,h=SET_W,SET_H
             fps=SET_FPS
-            vw = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'MJPG'), fps, (w, h))
+            self.vw = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'MJPG'), fps, (w, h))
             #save_path = str(Path(save_path).with_suffix('.mp4'))  # force *.mp4 suffix on results videos
         
         for i, s in enumerate(sources):  # index, source
@@ -392,7 +392,7 @@ class LoadStreams:
             _, self.imgs[i] = cap.read()  # guarantee first frame
             if not SAVE_RAW_STREAM:
                 vw=None
-            self.threads[i] = Thread(target=self.update, args=([i, cap, s, vw]), daemon=True)
+            self.threads[i] = Thread(target=self.update, args=([i, cap, s, self.vw]), daemon=True)
             LOGGER.info(f"{st} Success ({self.frames[i]} frames {w}x{h} at {self.fps[i]:.2f} FPS)")
             self.threads[i].start()
         LOGGER.info('')  # newline
@@ -415,6 +415,7 @@ class LoadStreams:
                 success, im = cap.retrieve()
                 if success:
                     self.imgs[i] = im
+                    '''
                     if SAVE_RAW_STREAM:
                         names="test_2023_03_03"
                         annotator = Annotator(im, line_width=3, example=str(names))
@@ -422,6 +423,7 @@ class LoadStreams:
                             im = im[..., ::-1]
                         annotator.time_label(frame_count=n,txt_color=(0,255,128))
                         vw.write(im)
+                        '''
                 else:
                     LOGGER.warning('WARNING ⚠️ Video stream unresponsive, please check your IP camera connection.')
                     self.imgs[i] = np.zeros_like(self.imgs[i])
@@ -436,12 +438,23 @@ class LoadStreams:
 
     def __next__(self):
         self.count += 1
-        if not all(x.is_alive() for x in self.threads) or cv2.waitKey(1) == ord('q'):  # q to quit
-            cv2.destroyAllWindows()
-            raise StopIteration
+        #if not all(x.is_alive() for x in self.threads) or cv2.waitKey(1) == ord('q'):  # q to quit
+            #cv2.destroyAllWindows()
+            #raise StopIteration
 
         #im0 = self.imgs.copy()
         im0 = self.imgs #Alister modified 2023-01-12
+        
+        
+        #==============================================
+        if SAVE_RAW_STREAM:
+            names="test_2023_03_03"
+            annotator = Annotator(im0[0], line_width=3, example=str(names))
+            if not SET_H is 720:
+                im0[0] = im0[0][..., ::-1]
+            annotator.time_label(frame_count=self.count,txt_color=(0,255,128))
+            self.vw.write(im0[0])
+        #==============================================
         #if self.transforms:
             #im = np.stack([self.transforms(x) for x in im0])  # transforms
         #else:
