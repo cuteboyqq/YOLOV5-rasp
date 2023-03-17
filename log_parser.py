@@ -19,6 +19,9 @@ def Analysis_path(path):
     return file,file_name,file_dir
 
 def parse_log_txt():
+    #parsing log file
+    #log format is : [save_txt_path] [class] x y w h
+    #generate each frame label.txt and save at file_dir
     with open('log.txt') as f:
         for line in f.readlines():
             save_txt_path = line.split(" ")[0]
@@ -65,7 +68,8 @@ def video_extract_frame(path,skip_frame,txt_dir,class_path,img_size,yolo_infer_t
     
     while True:
         if success:
-            annotator = Annotator(im0, line_width=line_thickness, example=str(names))
+            names = "2023-03-17"
+            annotator = Annotator(image, line_width=2, example=str(names))
             if count%skip_frame==0:
                 
                 #====extract video frame====
@@ -75,25 +79,37 @@ def video_extract_frame(path,skip_frame,txt_dir,class_path,img_size,yolo_infer_t
                 #image = cv2.resize(image,(img_size,img_size))
                 
                 #=====Start parsing label.txt, try to get the xyxy and cls informations======================
-                
-                
-                
+                filename_txt_ = filename + "_" + str(count) + ".txt"
+                txt_path = os.path.join(txt_dir,filename_txt_)
+                if os.path.exists(txt_path):
+                    with open(txt_path,'r') as f:
+                        for line in f.readlines():
+                            print(line)
+                            #Line format is [label_file_path] [class] x y w h
+                            #Try to get xywh
+                            xywh = line.split(" ")[1:]
+                            label = line.split(" ")[1]
+                            xywh_str = ' '.join(x for x in xywh)
+                            label_str = ' '.join(x for x in label)
+                            print(label_str)
+                            print(xywh_str)
+                            
                 #Not implemented
-                
-                
-                #=====End parsing label.txt, try to get the xyxy and cls informations======================
-                c = int(cls)  # integer class
-                label = None if hide_labels else (names[c] if hide_conf else f'{names[c]} {conf:.2f}')
-                #annotator.box_label(xyxy, label, color=colors(c, True))
-                #if c==0 and filter_line_label==False: #noline (test)
-                if c==0: #noline (test)
-                    if conf<0.70:
-                        annotator.box_label(xyxy, label+" anomaly" , color=(255,0,128))
-                    else:
-                        annotator.box_label(xyxy, label+" normal" , color=(255,0,0))
-                elif not c==0:
-                    annotator.box_label(xyxy, label, color=colors(c, True))
-                #===========================================================
+                save_airesult=False
+                if save_airesult:
+                    #=====End parsing label.txt, try to get the xyxy and cls informations======================
+                    c = int(cls)  # integer class
+                    label = None if hide_labels else (names[c] if hide_conf else f'{names[c]} {conf:.2f}')
+                    #annotator.box_label(xyxy, label, color=colors(c, True))
+                    #if c==0 and filter_line_label==False: #noline (test)
+                    if c==0: #noline (test)
+                        if conf<0.70:
+                            annotator.box_label(xyxy, label+" anomaly" , color=(255,0,128))
+                        else:
+                            annotator.box_label(xyxy, label+" normal" , color=(255,0,0))
+                    elif not c==0:
+                        annotator.box_label(xyxy, label, color=colors(c, True))
+                    #===========================================================
                 
                 
                 cv2.imwrite(img_path,image)
