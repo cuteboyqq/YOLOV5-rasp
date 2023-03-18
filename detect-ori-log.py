@@ -33,7 +33,7 @@ from pathlib import Path
 from datetime import datetime
 import torch
 import time
-
+import numpy as np
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # YOLOv5 root directory
 if str(ROOT) not in sys.path:
@@ -43,7 +43,7 @@ ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
 from models.common import DetectMultiBackend
 from utils.dataloaders import IMG_FORMATS, VID_FORMATS, LoadImages, LoadScreenshots, LoadStreams
 from utils.general import (LOGGER, Profile, check_file, check_img_size, check_imshow, check_requirements, colorstr, cv2,
-                           increment_path, non_max_suppression, print_args, scale_boxes, strip_optimizer, xyxy2xywh)
+                           increment_path, non_max_suppression, print_args, scale_boxes, strip_optimizer, xyxy2xywh, xywh2xyxy)
 from utils.plots import Annotator, colors, save_one_box
 from utils.torch_utils import select_device, smart_inference_mode
 frame_label_list_global = []
@@ -80,8 +80,8 @@ def run(
         dnn=False,  # use OpenCV DNN for ONNX inference
         vid_stride=1,  # video frame-rate stride
 ):
-    if os.path.exists('log.txt'):
-        os.remove('log.txt')
+    if os.path.exists(r'C:\GitHub_Code\cuteboyqq\YOLO\YOLOV5-rasp\log.txt'):
+        os.remove(r'C:\GitHub_Code\cuteboyqq\YOLO\YOLOV5-rasp\log.txt')
     global frame_label_list_global
     source = str(source)
     save_img = not nosave and not source.endswith('.txt')  # save inference images
@@ -178,11 +178,17 @@ def run(
                     
                     #=======================Alister add 2023-03-16===================
                     if enable_add_label_list:
-                        xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
-                        line = (cls, *xywh, conf) if save_conf else (cls, *xywh)  # label format
-                        #print(line)
+                        save_conf_log = True
+                        #xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
+                        xywh = (xyxy2xywh(torch.tensor(xyxy).view(1,4)))  # normalized xywh
+                        xyxy_list = (xywh2xyxy(torch.tensor(xywh).view(1, 4))).view(-1).tolist()
+                        #xyxy_list = (xywh2xyxy(torch.tensor(xywh).view(1, 4)) / gn).view(-1).tolist()
+                        #line = (cls, *xywh, conf) if save_conf else (cls, *xywh)  # label format
+                        line = (cls, *xyxy_list, conf) if save_conf_log else (cls, *xyxy_list)  # label format
+                        print(line)
                         #print(('%g ' * len(line)).rstrip() % line)
                         la = ('%g ' * len(line)).rstrip() % line
+                        print(la)
                         #frame_label_list_global.append([f'{txt_path}.txt',('%g ' * len(line)).rstrip() % line ])
                         frame_label_list_global.append(f'{txt_path}.txt {la}')
                         
@@ -196,7 +202,8 @@ def run(
                         #https://stackoverflow.com/questions/899103/writing-a-list-to-a-file-with-python-with-newlines
                         #print("frame_count = {}".format(frame_count))
                         if frame_count % 100 == 0:
-                            with open('log.txt', 'a') as f:
+                            with open(r'C:\GitHub_Code\cuteboyqq\YOLO\YOLOV5-rasp\log.txt', 'a') as f:
+                                print("open succussful !")
                                 for line in frame_label_list_global:
                                     f.write("%s\n" % line)
                             frame_label_list_global.clear()
