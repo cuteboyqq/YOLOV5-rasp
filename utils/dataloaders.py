@@ -271,6 +271,19 @@ class LoadImages:
         self.auto = auto
         self.transforms = transforms  # optional
         self.vid_stride = vid_stride  # video frame-rate stride
+        
+        #Alister add 2023-02-28
+        if SAVE_RAW_STREAM:
+            now = datetime.now()
+            s_time = datetime.strftime(now,'%y-%m-%d_%H-%M-%S')
+            s_time = str(s_time)
+            save_path = r"C:/GitHub_Code/cuteboyqq/YOLO/"+ s_time + ".avi"
+            w,h=SET_W,SET_H
+            fps=SET_FPS
+            self.vw = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'MJPG'), fps, (w, h))
+            #save_path = str(Path(save_path).with_suffix('.mp4'))  # force *.mp4 suffix on results videos
+        
+        
         if any(videos):
             self._new_video(videos[0])  # new video
         else:
@@ -293,6 +306,19 @@ class LoadImages:
             for _ in range(self.vid_stride):
                 self.cap.grab()
             ret_val, im0 = self.cap.retrieve()
+            
+            #==============================================
+            if SAVE_RAW_STREAM:
+                names="test_2023_03_03"
+                #im0 = np.ascontiguousarray(im0)  # contiguous
+                annotator = Annotator(im0, line_width=3, example=str(names))
+                #if not SET_H is 720:
+                    #im0 = im0[..., ::-1]
+                annotator.time_label(frame_count=self.count,txt_color=(0,255,128))
+                self.vw.write(im0)
+            #==============================================
+            
+            
             while not ret_val:
                 self.count += 1
                 self.cap.release()
@@ -301,6 +327,7 @@ class LoadImages:
                 path = self.files[self.count]
                 self._new_video(path)
                 ret_val, im0 = self.cap.read()
+                
 
             self.frame += 1
             # im0 = self._cv2_rotate(im0)  # for use if cv2 autorotation is False
@@ -346,7 +373,7 @@ class LoadImages:
 
 class LoadStreams:
     # YOLOv5 streamloader, i.e. `python detect.py --source 'rtsp://example.com/media.mp4'  # RTSP, RTMP, HTTP streams`
-    def __init__(self, sources='streams.txt', img_size=640, stride=32, auto=True, transforms=None, vid_stride=1):
+    def __init__(self, sources='streams.txt', img_size=640, stride=32, auto=True, transforms=None, vid_stride=1, save_dir='runs/detect/'):
         torch.backends.cudnn.benchmark = True  # faster for fixed-size inference
         self.mode = 'stream'
         self.img_size = img_size
@@ -359,9 +386,10 @@ class LoadStreams:
         #Alister add 2023-02-28
         if SAVE_RAW_STREAM:
             now = datetime.now()
-            s_time = datetime.strftime(now,'%y-%m-%d %H:%M:%S')
+            s_time = datetime.strftime(now,'%y-%m-%d_%H-%M-%S')
             s_time = str(s_time)
-            save_path = r"/home/ali/GitHub_Code/cuteboyqq/YOLO/"+ s_time + ".avi"
+            save_path = os.path.join(save_dir,"0.avi")
+            print(save_path)
             w,h=SET_W,SET_H
             fps=SET_FPS
             self.vw = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'MJPG'), fps, (w, h))
@@ -449,6 +477,7 @@ class LoadStreams:
         #==============================================
         if SAVE_RAW_STREAM:
             names="test_2023_03_03"
+            im0[0] = np.ascontiguousarray(im0[0])  # contiguous
             annotator = Annotator(im0[0], line_width=3, example=str(names))
             if not SET_H is 720:
                 im0[0] = im0[0][..., ::-1]
