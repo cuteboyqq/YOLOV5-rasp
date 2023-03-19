@@ -106,7 +106,7 @@ def run(
     bs = 1  # batch_size
     if webcam:
         view_img = check_imshow()
-        dataset = LoadStreams(source, img_size=imgsz, stride=stride, auto=pt, vid_stride=vid_stride)
+        dataset = LoadStreams(source, img_size=imgsz, stride=stride, auto=pt, vid_stride=vid_stride, save_dir=save_dir)
         bs = len(dataset)
     elif screenshot:
         dataset = LoadScreenshots(source, img_size=imgsz, stride=stride, auto=pt)
@@ -178,6 +178,7 @@ def run(
                     
                     #=======================Alister add 2023-03-16===================
                     if enable_add_label_list:
+                        save_log_path = os.path.join(save_dir,'log.txt')
                         save_conf_log = True
                         #xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
                         xywh = (xyxy2xywh(torch.tensor(xyxy).view(1,4)))  # normalized xywh
@@ -190,6 +191,7 @@ def run(
                         la = ('%g ' * len(line)).rstrip() % line
                         print(la)
                         #frame_label_list_global.append([f'{txt_path}.txt',('%g ' * len(line)).rstrip() % line ])
+                        #frame_str = str(frame)
                         frame_label_list_global.append(f'{txt_path}.txt {la}')
                         
                         nn = len(frame_label_list_global) if len(frame_label_list_global)<=10 else 10
@@ -202,7 +204,7 @@ def run(
                         #https://stackoverflow.com/questions/899103/writing-a-list-to-a-file-with-python-with-newlines
                         #print("frame_count = {}".format(frame_count))
                         if frame_count % 100 == 0:
-                            with open(r'C:\GitHub_Code\cuteboyqq\YOLO\YOLOV5-rasp\log.txt', 'a') as f:
+                            with open(save_log_path, 'a') as f:
                                 print("open succussful !")
                                 for line in frame_label_list_global:
                                     f.write("%s\n" % line)
@@ -269,7 +271,13 @@ def run(
                         save_path = str(Path(save_path).with_suffix('.avi'))  # force *.mp4 suffix on results videos
                         #Alister add 2023-03-19
                         #modified_path = analysis_path(save_path)
-                        #specific_path = generate_specific_path()
+                        file = save_path.split("\\")[-1]
+                        file_name = file.split(".")[0]
+                        print(file_name)
+                        if file_name=="0":
+                            save_path = generate_specific_path(save_dir)
+                        else:
+                            save_path = save_path
                         #fourcc = cv2.VideoWriter_fourcc(*'MJPG')
                         vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'MJPG'), fps, (w, h))
                         #save_path = str(Path(save_path).with_suffix('.mp4'))  # force *.mp4 suffix on results videos
@@ -322,13 +330,13 @@ def analysis_path(path):
     modified_path = os.path.join(path_dir,new_file)
     return modified_path
 
-def generate_specific_path():
-    custom_dir = r"C:\GitHub_Code\cuteboyqq\YOLO\YOLOV5-rasp\runs\detect"
-    now=datetime.now()
-    s_time=datetime.strftime(now,'%y-%m-%d_%H-%M-%S')
-    s_time=str(s_time)
-    new_file = s_time + ".avi"
-    custom_path = os.path.join(custom_dir,new_file)
+def generate_specific_path(save_dir="runs/detect"):
+    #custom_dir = r"C:\GitHub_Code\cuteboyqq\YOLO\YOLOV5-rasp\runs\detect"
+    #now=datetime.now()
+    #s_time=datetime.strftime(now,'%y-%m-%d_%H-%M-%S')
+    #s_time=str(s_time)
+    new_file = "0_result.avi"
+    custom_path = os.path.join(save_dir,new_file)
     return custom_path
 def parse_opt():
     parser = argparse.ArgumentParser()
