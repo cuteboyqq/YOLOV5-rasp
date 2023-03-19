@@ -267,6 +267,9 @@ def run(
                         else:  # stream
                             fps, w, h = 30, im0.shape[1], im0.shape[0]
                         save_path = str(Path(save_path).with_suffix('.avi'))  # force *.mp4 suffix on results videos
+                        #Alister add 2023-03-19
+                        #modified_path = analysis_path(save_path)
+                        #specific_path = generate_specific_path()
                         #fourcc = cv2.VideoWriter_fourcc(*'MJPG')
                         vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'MJPG'), fps, (w, h))
                         #save_path = str(Path(save_path).with_suffix('.mp4'))  # force *.mp4 suffix on results videos
@@ -308,8 +311,25 @@ def run(
         LOGGER.info(f"Results saved to {colorstr('bold', save_dir)}{s}")
     if update:
         strip_optimizer(weights[0])  # update model (to fix SourceChangeWarning)
+#Alister add 2023-03-19
+def analysis_path(path):
+    path_dir = os.path.dirname(path)
+    #file = path.split("/")[-1]
+    now = datetime.now()
+    s_time = datetime.strftime(now,'%y-%m-%d_%H-%M-%S')
+    s_time = str(s_time)
+    new_file = s_time + ".avi"
+    modified_path = os.path.join(path_dir,new_file)
+    return modified_path
 
-
+def generate_specific_path():
+    custom_dir = r"C:\GitHub_Code\cuteboyqq\YOLO\YOLOV5-rasp\runs\detect"
+    now=datetime.now()
+    s_time=datetime.strftime(now,'%y-%m-%d_%H-%M-%S')
+    s_time=str(s_time)
+    new_file = s_time + ".avi"
+    custom_path = os.path.join(custom_dir,new_file)
+    return custom_path
 def parse_opt():
     parser = argparse.ArgumentParser()
     parser.add_argument('--weights', nargs='+', type=str, default=ROOT / 'yolov5s.pt', help='model path or triton URL')
