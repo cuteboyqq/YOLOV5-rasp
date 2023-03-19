@@ -65,6 +65,7 @@ def run(
         save_conf=False,  # save confidences in --save-txt labels
         save_crop=False,  # save cropped prediction boxes
         nosave=False,  # do not save images/videos
+        save_airesult=False, # save ai result videos/images
         classes=None,  # filter by class: --class 0, or --class 0 2 3
         agnostic_nms=False,  # class-agnostic NMS
         augment=False,  # augmented inference
@@ -254,35 +255,36 @@ def run(
                 cv2.waitKey(1)  # 1 millisecond
 
             # Save results (image with detections)
-            if save_img:
-                if dataset.mode == 'image':
-                    cv2.imwrite(save_path, im0)
-                else:  # 'video' or 'stream'
-                    if vid_path[i] != save_path:  # new video
-                        vid_path[i] = save_path
-                        if isinstance(vid_writer[i], cv2.VideoWriter):
-                            vid_writer[i].release()  # release previous video writer
-                        if vid_cap:  # video
-                            fps = vid_cap.get(cv2.CAP_PROP_FPS)
-                            w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-                            h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-                        else:  # stream
-                            fps, w, h = 30, im0.shape[1], im0.shape[0]
-                        save_path = str(Path(save_path).with_suffix('.avi'))  # force *.mp4 suffix on results videos
-                        #Alister add 2023-03-19
-                        #modified_path = analysis_path(save_path)
-                        file = save_path.split("\\")[-1]
-                        file_name = file.split(".")[0]
-                        print(file_name)
-                        if file_name=="0":
-                            save_path = generate_specific_path(save_dir)
-                        else:
-                            save_path = save_path
-                        #fourcc = cv2.VideoWriter_fourcc(*'MJPG')
-                        vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'MJPG'), fps, (w, h))
-                        #save_path = str(Path(save_path).with_suffix('.mp4'))  # force *.mp4 suffix on results videos
-                        #vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
-                    vid_writer[i].write(im0)
+            if save_airesult:
+                if save_img:
+                    if dataset.mode == 'image':
+                        cv2.imwrite(save_path, im0)
+                    else:  # 'video' or 'stream'
+                        if vid_path[i] != save_path:  # new video
+                            vid_path[i] = save_path
+                            if isinstance(vid_writer[i], cv2.VideoWriter):
+                                vid_writer[i].release()  # release previous video writer
+                            if vid_cap:  # video
+                                fps = vid_cap.get(cv2.CAP_PROP_FPS)
+                                w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                                h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                            else:  # stream
+                                fps, w, h = 30, im0.shape[1], im0.shape[0]
+                            save_path = str(Path(save_path).with_suffix('.avi'))  # force *.mp4 suffix on results videos
+                            #Alister add 2023-03-19
+                            #modified_path = analysis_path(save_path)
+                            file = save_path.split("\\")[-1]
+                            file_name = file.split(".")[0]
+                            print(file_name)
+                            if file_name=="0":
+                                save_path = generate_specific_path(save_dir)
+                            else:
+                                save_path = save_path
+                            #fourcc = cv2.VideoWriter_fourcc(*'MJPG')
+                            vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'MJPG'), fps, (w, h))
+                            #save_path = str(Path(save_path).with_suffix('.mp4'))  # force *.mp4 suffix on results videos
+                            #vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
+                        vid_writer[i].write(im0)
             if save_anomaly_img:
                 img_dir = os.path.dirname(save_path)
                 img_name = s_time + '.jpg'
@@ -353,6 +355,7 @@ def parse_opt():
     parser.add_argument('--save-conf', action='store_true', help='save confidences in --save-txt labels')
     parser.add_argument('--save-crop', action='store_true', help='save cropped prediction boxes')
     parser.add_argument('--nosave', action='store_true', help='do not save images/videos')
+    parser.add_argument('--save-airesult', action='store_true', help='save images/videos of ai result')
     parser.add_argument('--classes', nargs='+', type=int, help='filter by class: --classes 0, or --classes 0 2 3')
     parser.add_argument('--agnostic-nms', action='store_true', help='class-agnostic NMS')
     parser.add_argument('--augment', action='store_true', help='augmented inference')

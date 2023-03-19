@@ -22,8 +22,15 @@ def parse_log_txt(log_dir="runs/detect/"):
     #parsing log file
     #log format is : [save_txt_path] [class] x y w h
     #generate each frame label.txt and save at file_dir
-    log_path = log_dir + "log.txt"
-    with open(r"C:\GitHub_Code\cuteboyqq\YOLO\YOLOV5-rasp\runs\detect\exp22\log.txt") as f:
+    #log_path = log_dir + "log.txt"
+    log_path = os.path.join(log_dir,"log.txt")
+    label_dir = os.path.join(log_dir,"labels")
+    #remove old folder
+    if os.path.exists(label_dir):
+        shutil.rmtree(label_dir)
+        
+    #with open(r"C:\GitHub_Code\cuteboyqq\YOLO\YOLOV5-rasp\runs\detect\exp22\log.txt") as f:
+    with open(log_path) as f:
         for line in f.readlines():
             save_txt_path = line.split(" ")[0]
             label = line.split(" ")[1:]
@@ -71,7 +78,8 @@ def video_extract_frame(path,
         now = datetime.now()
         s_time = datetime.strftime(now,'%y-%m-%d_%H-%M-%S')
         s_time = str(s_time)
-        save_path = log_dir + "0_result_offline"+ ".avi"
+        #save_path = log_dir + "0_result_offline"+ ".avi"
+        save_path = os.path.join(log_dir,"0_result_offline.avi")
         w,h=SET_W,SET_H
         fps=SET_FPS
         vw = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'MJPG'), fps, (w, h))
@@ -84,6 +92,10 @@ def video_extract_frame(path,
     print(file," ",filename," ",file_dir)
     save_folder_name =  filename + "_imgs"
     save_dir = os.path.join(file_dir,save_folder_name)
+    
+    if os.path.exists(save_dir):
+        shutil.rmtree(save_dir)
+    
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
     
@@ -134,7 +146,7 @@ def video_extract_frame(path,
                                 #annotator.box_label(xyxy, label, color=colors(c, True))
                                 #if c==0 and filter_line_label==False: #noline (test)
                                 if c==0: #noline (test)
-                                    if conf<0.70:
+                                    if conf_f<0.70:
                                         annotator.box_label(xyxy, label+" anomaly" , color=(255,0,128))
                                     else:
                                         annotator.box_label(xyxy, label+" normal" , color=(255,0,0))
@@ -168,7 +180,7 @@ def video_extract_frame(path,
                 print('save frame ',count)
         else:
             print('Video capture failed, break')
-            continue
+            break
         success,image = vidcap.read()
         #print('Read a new frame: ', success)
         count += 1
@@ -181,7 +193,8 @@ def get_args():
     #parser.add_argument('-videopath','--video-path',help="input video path",default="/home/ali/Argos_Project/Factory_Project/Screen_record_Argos_Stream/20230314_203715.mp4")
     #parser.add_argument('-videopath','--video-path',help="input video path",default="/home/ali/factory_video/Argos_Record/2023-03-15/SmallScreen_Record/filterline_version2/YoloV4-f320-4cls/20230315-215557-H264-00.mp4")
     #parser.add_argument('-videopath','--video-path',help="input video path",default="/home/ali/GitHub_Code/cuteboyqq/YOLO/YOLOV5-rasp/runs/detect/2023-03-17/0.avi")
-    parser.add_argument('-videopath','--video-path',help="input video path",default=r"C:\GitHub_Code\cuteboyqq\YOLO\YOLOV5-rasp\runs\detect\exp22\0.avi")
+    parser.add_argument('-videopath','--video-path',help="input video path",default=r"C:\GitHub_Code\cuteboyqq\YOLO\YOLOV5-rasp\runs\detect\exp23\0.avi")
+    parser.add_argument('-logdir','--log-dir',help="input log directory",default=r"C:\GitHub_Code\cuteboyqq\YOLO\YOLOV5-rasp\runs\detect\exp23")
     parser.add_argument('-skipf','--skip-f',type=int,help="number of skp frame",default=1)
     parser.add_argument('-imgsize','--img-size',type=int,help="size of images",default=640)
     parser.add_argument('-yoloinfer','--yolo-infer',action='store_true',help="have yolo infer txt")
@@ -200,15 +213,17 @@ if __name__=="__main__":
     class_path = args.class_txt
     yolo_infer = args.yolo_infer
     img_size = args.img_size
+    log_dir = args.log_dir
     print("video_path =",video_path)
     print("skip_frame = ",skip_frame)
     print("yolo_txt_dir = ",yolo_txt_dir)
     print("class_path = ",class_path)
     print("yolo_infer = ",yolo_infer)
     print("img_size = ",img_size)
-    log_dir="C:/GitHub_Code/cuteboyqq/YOLO/YOLOV5-rasp/runs/detect/exp22/"
-    #yolo_txt_dir = parse_log_txt(log_dir)
-    yolo_txt_dir = r"C:\GitHub_Code\cuteboyqq\YOLO\YOLOV5-rasp\runs\detect\exp22\labels"
+    print("log_dir = ",log_dir)
+    #log_dir=r"C:\GitHub_Code\cuteboyqq\YOLO\YOLOV5-rasp\runs\detect\exp22"
+    yolo_txt_dir = parse_log_txt(log_dir)
+    #yolo_txt_dir = r"C:\GitHub_Code\cuteboyqq\YOLO\YOLOV5-rasp\runs\detect\exp22\labels"
     
     video_extract_frame(video_path, 
                         skip_frame, 
