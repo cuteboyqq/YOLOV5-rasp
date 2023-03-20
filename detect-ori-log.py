@@ -106,7 +106,7 @@ def run(
     # Dataloader
     bs = 1  # batch_size
     if webcam:
-        view_img = check_imshow()
+        #view_img = check_imshow()
         dataset = LoadStreams(source, img_size=imgsz, stride=stride, auto=pt, vid_stride=vid_stride, save_dir=save_dir)
         bs = len(dataset)
     elif screenshot:
@@ -119,6 +119,9 @@ def run(
     model.warmup(imgsz=(1 if pt or model.triton else bs, 3, *imgsz))  # warmup
     seen, windows, dt = 0, [], (Profile(), Profile(), Profile())
     frame_count = 0
+    #no use now
+    #Alister add f_cnt parameters 2023-03-20
+    #for path, im, im0s, vid_cap, s in dataset:
     for path, im, im0s, vid_cap, s in dataset:
         print("[detect.py]===========Start detect one frame.===============")
         start_detect_one_frame_time = time.time()
@@ -159,6 +162,9 @@ def run(
             gn = torch.tensor(im0.shape)[[1, 0, 1, 0]]  # normalization gain whwh
             imc = im0.copy() if save_crop else im0  # for save_crop
             annotator = Annotator(im0, line_width=line_thickness, example=str(names))
+            #Alister 2023-03-20 add Save AI result Stream including  time label at each frame
+            global frame_count_global 
+            annotator.time_label(frame_count=int(frame), txt_color=(0,255,128),w=1280.0,h=720.0,enable_frame=True)
             if len(det):
                 # Rescale boxes from img_size to im0 size
                 det[:, :4] = scale_boxes(im.shape[2:], det[:, :4], im0.shape).round()
@@ -187,10 +193,10 @@ def run(
                         #xyxy_list = (xywh2xyxy(torch.tensor(xywh).view(1, 4)) / gn).view(-1).tolist()
                         #line = (cls, *xywh, conf) if save_conf else (cls, *xywh)  # label format
                         line = (cls, *xyxy_list, conf) if save_conf_log else (cls, *xyxy_list)  # label format
-                        print(line)
+                        #print(line)
                         #print(('%g ' * len(line)).rstrip() % line)
                         la = ('%g ' * len(line)).rstrip() % line
-                        print(la)
+                        #print(la)
                         #frame_label_list_global.append([f'{txt_path}.txt',('%g ' * len(line)).rstrip() % line ])
                         #frame_str = str(frame)
                         frame_label_list_global.append(f'{txt_path}.txt {la}')
@@ -246,6 +252,7 @@ def run(
 
             # Stream results
             im0 = annotator.result()
+            #view_img=False
             if view_img:
                 if platform.system() == 'Linux' and p not in windows:
                     windows.append(p)
@@ -269,14 +276,15 @@ def run(
                                 w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
                                 h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
                             else:  # stream
-                                fps, w, h = 30, im0.shape[1], im0.shape[0]
+                                fps, w, h = 13, im0.shape[1], im0.shape[0]
                             save_path = str(Path(save_path).with_suffix('.avi'))  # force *.mp4 suffix on results videos
                             #Alister add 2023-03-19
                             #modified_path = analysis_path(save_path)
-                            file = save_path.split("\\")[-1]
+                            file = save_path.split("/")[-1]
                             file_name = file.split(".")[0]
                             print(file_name)
                             if file_name=="0":
+                                #print(save_dir)
                                 save_path = generate_specific_path(save_dir)
                             else:
                                 save_path = save_path
@@ -299,7 +307,7 @@ def run(
         druring_detect_one_frame = time.time() - start_detect_one_frame_time # start_detect_one_frame_time is initialize at line 194
         print('[detect.py]============druring_detect_one_frame : {} ms=============='.format(float(druring_detect_one_frame*1000)))
         global Total_one_frame_time
-        global frame_count_global
+        #global frame_count_global
         Total_one_frame_time+=druring_detect_one_frame
         Avg_one_frame_time = Total_one_frame_time/frame_count_global
         FPS = int(1000.0/float(Avg_one_frame_time*1000))

@@ -32,7 +32,7 @@ class MainWindow(QMainWindow):
         self.comboBox.setGeometry(350, 250, 300, 30)
 
         # Populate the QComboBox with folder names
-        folder_path = r"C:\GitHub_Code\cuteboyqq\YOLO\YOLOV5-rasp\runs\detect"
+        folder_path = r"/home/ali/GitHub_Code/cuteboyqq/YOLO/YOLOV5-rasp/runs/detect"
         folder_names = [f for f in os.listdir(folder_path) if os.path.isdir(os.path.join(folder_path, f))]
         self.comboBox.addItems(folder_names)
 
@@ -162,8 +162,8 @@ class MainWindow(QMainWindow):
         
     def onComboBoxActivated(self, folder_name):
         # Get the full path of the selected folder
-        folder_path = os.path.join(r"C:\GitHub_Code\cuteboyqq\YOLO\YOLOV5-rasp\runs\detect", folder_name)
-        video_path = os.path.join(r"C:\GitHub_Code\cuteboyqq\YOLO\YOLOV5-rasp\runs\detect",folder_name,"0.avi")
+        folder_path = os.path.join(r"/home/ali/GitHub_Code/cuteboyqq/YOLO/YOLOV5-rasp/runs/detect", folder_name)
+        video_path = os.path.join(r"/home/ali/GitHub_Code/cuteboyqq/YOLO/YOLOV5-rasp/runs/detect",folder_name,"0.avi")
         # Set the folder path as a command parameter
         sys.argv = ['log_parser_ver2.py', '--log-dir', folder_path, '--video-path', video_path]
         
@@ -249,7 +249,7 @@ class MainWindow(QMainWindow):
     #=========================================================================
     def initialize_folder_combobox(self):
         # get the specific directory
-        specific_dir = r"C:\GitHub_Code\cuteboyqq\YOLO\YOLOV5-rasp\runs\detect"
+        specific_dir = r"/home/ali/GitHub_Code/cuteboyqq/YOLO/YOLOV5-rasp/runs/detect"
 
         # get the list of folders in the directory
         folders = [f.name for f in os.scandir(specific_dir) if f.is_dir()]
@@ -262,7 +262,7 @@ class MainWindow(QMainWindow):
         selected_folder = self.folder_combobox.currentText()
 
         # get the specific directory
-        specific_dir = r"C:\GitHub_Code\cuteboyqq\YOLO\YOLOV5-rasp\runs\detect"
+        specific_dir = r"/home/ali/GitHub_Code/cuteboyqq/YOLO/YOLOV5-rasp/runs/detect"
 
         # get the list of files in the selected folder
         file_list = os.listdir(os.path.join(specific_dir, selected_folder))
@@ -280,7 +280,7 @@ class MainWindow(QMainWindow):
         selected_folder = self.folder_combobox.currentText()
 
         # get the specific directory
-        specific_dir = r"C:\GitHub_Code\cuteboyqq\YOLO\YOLOV5-rasp\runs\detect"
+        specific_dir = r"/home/ali/GitHub_Code/cuteboyqq/YOLO/YOLOV5-rasp/runs/detect"
 
         # get the full path to the selected file
         file_path = os.path.join(specific_dir, selected_folder, item.text())
@@ -417,7 +417,7 @@ class MainWindow(QMainWindow):
             
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    video_dir = r"C:\GitHub_Code\cuteboyqq\YOLO"  # Replace with the path to your video folder
+    video_dir = r"/home/ali/GitHub_Code/cuteboyqq/YOLO"  # Replace with the path to your video folder
     window = MainWindow(video_dir)
     #window.setup_ui()
 

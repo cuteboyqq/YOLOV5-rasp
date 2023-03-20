@@ -87,7 +87,7 @@ def video_extract_frame(path,
     
     vidcap = cv2.VideoCapture(path)
     success,image = vidcap.read()
-    count = 1
+    count = 0
     file,filename,file_dir = Analysis_path(path)
     print(file," ",filename," ",file_dir)
     save_folder_name =  filename + "_imgs"
@@ -200,7 +200,7 @@ def get_args():
     parser.add_argument('-yoloinfer','--yolo-infer',action='store_true',help="have yolo infer txt")
     #parser.add_argument('-yolotxt','--yolo-txt',help="yolo infer label txt dir",default="/home/ali/factory_video/2023-03-04/labels")
     parser.add_argument('-yolotxt','--yolo-txt',help="yolo infer label txt dir",default="/home/ali/GitHub_Code/cuteboyqq/YOLO/YOLOV5-rasp/runs/detect/2023-03-1712/labels")
-    parser.add_argument('-classtxt','--class-txt',help="class.txt path",default="C:\GitHub_Code\cuteboyqq\YOLO\classes.txt")
+    parser.add_argument('-classtxt','--class-txt',help="class.txt path",default="/home/ali/Desktop/YOLOV5-rasp/classes.txt")
     
     return parser.parse_args()
     
