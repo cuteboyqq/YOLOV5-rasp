@@ -48,7 +48,7 @@ RANK = int(os.getenv('RANK', -1))
 PIN_MEMORY = str(os.getenv('PIN_MEMORY', True)).lower() == 'true'  # global pin_memory for dataloaders
 
 SAVE_RAW_STREAM=True
-SET_FPS=30
+SET_FPS=23
 SET_W=1280
 SET_H=720
 # Get orientation exif tag
@@ -346,7 +346,10 @@ class LoadImages:
             im = letterbox(im0, self.img_size, stride=self.stride, auto=self.auto)[0]  # padded resize
             im = im.transpose((2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
             im = np.ascontiguousarray(im)  # contiguous
-
+        #return path, im, im0, self.cap, s
+        #Alister add parameter f_cnt 2023-03-20
+        #f_cnt = self.count
+        #no use now
         return path, im, im0, self.cap, s
 
     def _new_video(self, path):
