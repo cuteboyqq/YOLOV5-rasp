@@ -16,6 +16,8 @@ import logging
 from datetime import datetime
 shift_right = 50
 logging.basicConfig(filename='example.log', level=logging.DEBUG)
+#Setting the folder path for code  to use
+FOLDER_PATH = r"/home/ali/GitHub_Code/cuteboyqq/YOLO/YOLOV5-rasp/runs/detect"
 class MainWindow(QMainWindow):
     def __init__(self,video_dir):
         super().__init__()
@@ -32,7 +34,7 @@ class MainWindow(QMainWindow):
         self.comboBox.setGeometry(350, 250, 300, 30)
 
         # Populate the QComboBox with folder names
-        folder_path = r"/home/ali/GitHub_Code/cuteboyqq/YOLO/YOLOV5-rasp/runs/detect"
+        folder_path = FOLDER_PATH
         folder_names = [f for f in os.listdir(folder_path) if os.path.isdir(os.path.join(folder_path, f))]
         self.comboBox.addItems(folder_names)
 
@@ -162,8 +164,8 @@ class MainWindow(QMainWindow):
         
     def onComboBoxActivated(self, folder_name):
         # Get the full path of the selected folder
-        folder_path = os.path.join(r"/home/ali/GitHub_Code/cuteboyqq/YOLO/YOLOV5-rasp/runs/detect", folder_name)
-        video_path = os.path.join(r"/home/ali/GitHub_Code/cuteboyqq/YOLO/YOLOV5-rasp/runs/detect",folder_name,"0.avi")
+        folder_path = os.path.join(FOLDER_PATH, folder_name)
+        video_path = os.path.join(FOLDER_PATH,folder_name,"0.avi")
         # Set the folder path as a command parameter
         sys.argv = ['log_parser_ver2.py', '--log-dir', folder_path, '--video-path', video_path]
         
@@ -177,8 +179,11 @@ class MainWindow(QMainWindow):
         if not os.path.exists(os.path.join(folder_path,"0.avi")) or not os.path.exists(os.path.join(folder_path,"log.txt")):
             QMessageBox.warning(self, "Error", "Need log.txt and 0.avi")
         else:
-            reply = QMessageBox.information(self, 'Integration', 'Start to generate ai result video',
-            QMessageBox.Ok | QMessageBox.Close, QMessageBox.Close)
+            if os.path.exists(os.path.join(folder_path,"0_result_offline.avi")):
+                reply = QMessageBox.information(self, 'Integration', 'Already have 0_result_offline.avi, do you want to re-generate it?',
+                QMessageBox.Ok | QMessageBox.Close, QMessageBox.Close)
+            else:
+                reply = QMessageBox.information(self, 'Integration', 'Start to generate ai result video',QMessageBox.Ok | QMessageBox.Close, QMessageBox.Close)
             if reply == QMessageBox.Ok:
                 # Execute the command using subprocess
                 command = ["python", "log_parser_ver2.py", "--log-dir", folder_path, "--video-path",video_path]
@@ -249,7 +254,7 @@ class MainWindow(QMainWindow):
     #=========================================================================
     def initialize_folder_combobox(self):
         # get the specific directory
-        specific_dir = r"/home/ali/GitHub_Code/cuteboyqq/YOLO/YOLOV5-rasp/runs/detect"
+        specific_dir = FOLDER_PATH
 
         # get the list of folders in the directory
         folders = [f.name for f in os.scandir(specific_dir) if f.is_dir()]
@@ -262,7 +267,7 @@ class MainWindow(QMainWindow):
         selected_folder = self.folder_combobox.currentText()
 
         # get the specific directory
-        specific_dir = r"/home/ali/GitHub_Code/cuteboyqq/YOLO/YOLOV5-rasp/runs/detect"
+        specific_dir = FOLDER_PATH
 
         # get the list of files in the selected folder
         file_list = os.listdir(os.path.join(specific_dir, selected_folder))
@@ -274,7 +279,44 @@ class MainWindow(QMainWindow):
         for file_name in file_list:
             item = QListWidgetItem(file_name, self.file_listwidget)
             item.setToolTip(os.path.join(specific_dir, selected_folder, file_name))
+            
+            
+            
+    #=====================================================================================
+    import subprocess
 
+    def on_file_double_clicked(self, item):
+        # get the selected folder
+        selected_folder = self.folder_combobox.currentText()
+    
+        # get the specific directory
+        specific_dir = FOLDER_PATH
+    
+        # get the full path to the selected file
+        file_path = os.path.join(specific_dir, selected_folder, item.text())
+    
+        # check if the file exists
+        if not os.path.exists(file_path):
+            print(f"The file '{file_path}' does not exist.")
+            return
+    
+        # check if the file is readable
+        if not os.access(file_path, os.R_OK):
+            print(f"You do not have permission to read the file '{file_path}'.")
+            return
+    
+        # open the file with the default application
+        try:
+            if sys.platform == 'darwin':  # for MacOS
+                subprocess.call(('open', file_path))
+            elif sys.platform == 'linux':  # for Linux
+                subprocess.call(('xdg-open', file_path))
+            else:  # for Windows
+                os.startfile(file_path)
+        except Exception as e:
+            print(f"Failed to open the file '{file_path}': {e}")
+
+    '''
     def on_file_double_clicked(self, item):
         # get the selected folder
         selected_folder = self.folder_combobox.currentText()
@@ -300,6 +342,7 @@ class MainWindow(QMainWindow):
             os.startfile(file_path)
         except Exception as e:
             print(f"Failed to open the file '{file_path}': {e}")
+            '''
     #=========================================================================
     '''
     def setup_ui(self):
@@ -417,7 +460,7 @@ class MainWindow(QMainWindow):
             
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    video_dir = r"/home/ali/GitHub_Code/cuteboyqq/YOLO"  # Replace with the path to your video folder
+    video_dir = FOLDER_PATH  # Replace with the path to your video folder
     window = MainWindow(video_dir)
     #window.setup_ui()
 

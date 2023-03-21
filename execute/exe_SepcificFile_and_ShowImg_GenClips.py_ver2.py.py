@@ -5,7 +5,8 @@ Created on Tue Mar 21 11:50:32 2023
 
 @author: ali
 """
-
+from PyQt5.QtGui import QFont
+from PyQt5.QtCore import QTimer
 import os
 import subprocess
 from PyQt5.QtGui import QPixmap
@@ -13,32 +14,61 @@ from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 from PyQt5.QtCore import QUrl
 from PyQt5.QtWidgets import QApplication, QMainWindow, QComboBox, QWidget, QVBoxLayout, QCheckBox, QMessageBox, QLabel
 from PyQt5.QtMultimediaWidgets import QVideoWidget
+
+shift_right = 10
+FONT_SIZE = 12
+#FONT="Arial" # Times New Roman
+FONT= "Times New Roman"
 class ImageComboBox(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Image ComboBox")
-        self.setGeometry(100, 100, 500, 250)
+        self.setWindowTitle("Anomaly Image & Clips")
+        self.setGeometry(250, 250, 500, 250)
 
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
+        #self.Widget(self.central_widget)
         self.layout = QVBoxLayout(self.central_widget)
-
+        #==================directory_label========================================================
+        self.directory_label = QLabel()
+        self.directory_label.setText("Result Directories:")
+        self.directory_label.setFont(QFont(FONT, FONT_SIZE))  # set the font size
+        #self.directory_label.setGeometry(10+shift_right, 0, 200, 60)
+        self.layout.addWidget(self.directory_label)
+        #==================directory_combo_box========================================================
         self.directory_combo_box = QComboBox()
+        self.directory_combo_box.setFont(QFont(FONT, FONT_SIZE))  # set the font size
+        #self.directory_combo_box.setGeometry(150+shift_right, 0, 250, 60)
         self.directory_combo_box.addItems(self.get_subfolders(r"/home/ali/GitHub_Code/cuteboyqq/YOLO/YOLOV5-rasp/runs/detect/"))  # Replace with the root directory path
 
         self.directory_combo_box.currentIndexChanged.connect(self.selected_directory_changed)
         self.directory_combo_box.currentIndexChanged.connect(self.selected_directory_changed_part2)
         
         self.layout.addWidget(self.directory_combo_box)
-
+       
+        #==================image_label========================================================
+        self.image_label = QLabel()
+        self.image_label.setText("Anoamly Image Paths:")
+        self.image_label.setFont(QFont(FONT, FONT_SIZE))  # set the font size
+        #self.directory_label.setGeometry(10+shift_right, 0, 200, 60)
+        self.layout.addWidget(self.image_label)
+        #=====================image_combo_box=========================================================================
         self.image_combo_box = QComboBox()
+        self.image_combo_box.setFont(QFont(FONT, FONT_SIZE))  # set the font size
         self.image_combo_box.currentIndexChanged.connect(self.selected_image_changed)
 
         self.layout.addWidget(self.image_combo_box)
         
-        #=============================================================
+       
+        #==================smallclip_label========================================================
+        self.smallclip_label = QLabel()
+        self.smallclip_label.setText("Anomaly Small Clips:")
+        self.smallclip_label.setFont(QFont(FONT, FONT_SIZE))  # set the font size
+        #self.directory_label.setGeometry(10+shift_right, 0, 200, 60)
+        self.layout.addWidget(self.smallclip_label)
+        #====================smallclip_combo_box=========================================
         self.smallclip_combo_box = QComboBox()
-
+        self.smallclip_combo_box.setFont(QFont(FONT, FONT_SIZE))  # set the font size
         self.smallclip_combo_box.currentIndexChanged.connect(self.play_selected_video)
         self.layout.addWidget(self.smallclip_combo_box)
         
@@ -51,6 +81,7 @@ class ImageComboBox(QMainWindow):
         
 
         self.check_box = QCheckBox('Generate Short Clips', self)
+        self.check_box.setFont(QFont(FONT, FONT_SIZE))  # set the font size
         self.check_box.stateChanged.connect(self.generate_short_clips_changed)
 
         self.layout.addWidget(self.check_box)
@@ -87,7 +118,7 @@ class ImageComboBox(QMainWindow):
             message_box.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
             result = message_box.exec_()
             if result == QMessageBox.Yes:
-                command = ['python', 'get_anomaly_image_offline.py', '--root-datadir', selected_directory]
+                command = ['python', 'get_anomaly_image_offline.py', '--root-datadir', self.selected_directory]
                 subprocess.run(command)
     
     def selected_directory_changed(self, index):
@@ -159,6 +190,8 @@ class ImageComboBox(QMainWindow):
                 for filename in os.listdir(self.anomaly_clips_offline):
                     if filename.endswith(('.mp4', '.avi', '.mkv', '.mov')):
                         self.smallclip_combo_box.addItem(filename)
+                    
+              
     def generate_short_clips_changed(self, state):
         pass
 
