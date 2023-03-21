@@ -20,8 +20,8 @@ SET_FPS=20
 def Analysis_path(path):
     file=path.split("/")[-1]
     file_name=file.split(".")[0]
-    f_cnt = file_name.split("_")[-1]
-    return f_cnt
+    #f_cnt = file_name.split("_")[-1]
+    return file_name
 
 def Analysis_file(file):
     file_name = file.split(".")[0]
@@ -31,14 +31,15 @@ def Analysis_file(file):
 def Generate_Short_Clips(root_data_dir=r"/home/ali/GitHub_Code/cuteboyqq/YOLO/YOLOV5-rasp/runs/detect/exp2/0_imgs",
                          anomaly_img=None,
                          shift_left=40,
-                         shift_right=40,
-                         save_ano_clip_dir = r"/home/ali/GitHub_Code/cuteboyqq/YOLO/YOLOV5-rasp/runs/detect/exp2/anomaly_clips"):
+                         shift_right=40
+                         ):
     
     img_list=glob.glob(os.path.join(data_dir,'*.jpg'))
     
     
     #Get the left boundary
-    img_name,frame_count = Analysis_file(anomaly_img)
+    print("anomaly_img : {}".format(anomaly_img))
+    frame_count = Analysis_path(anomaly_img)
     frame_count = int(frame_count)
     if frame_count - shift_left>0:
         left_boundary_frame =  frame_count - shift_left
@@ -50,11 +51,13 @@ def Generate_Short_Clips(root_data_dir=r"/home/ali/GitHub_Code/cuteboyqq/YOLO/YO
         right_boundary_frame =  frame_count + shift_right
     else:
         right_boundary_frame = len(img_list) - 2
-   
+        
+    save_ano_clip_dir=os.path.join(root_data_dir,"anomaly_clips")
     if not os.path.exists(save_ano_clip_dir):
         os.makedirs(save_ano_clip_dir)
-       
+                    
     anomaly_video = str(left_boundary_frame) + "_" + str(right_boundary_frame) + "_" + str(frame_count) + ".avi"
+    #anomaly_video = str(left_boundary_frame) + "_" + str(frame_count) + ".avi"
     save_ano_clips_path = os.path.join(save_ano_clip_dir,anomaly_video)
     print(save_ano_clips_path)
     w,h=SET_W,SET_H
@@ -116,4 +119,4 @@ if __name__=="__main__":
     print("anomaly_img = {}".format(anomaly_img))
     
     
-    Generate_Short_Clips(root_data_dir,anomaly_img,shift_left,shift_right,save_ano_clip_dir)
+    Generate_Short_Clips(root_data_dir,anomaly_img,shift_left,shift_right)
