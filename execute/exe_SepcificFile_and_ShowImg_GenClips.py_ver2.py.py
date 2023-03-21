@@ -12,7 +12,7 @@ import subprocess
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 from PyQt5.QtCore import QUrl
-from PyQt5.QtWidgets import QApplication, QMainWindow, QComboBox, QWidget, QVBoxLayout, QCheckBox, QMessageBox, QLabel
+from PyQt5.QtWidgets import QApplication, QMainWindow, QComboBox, QWidget, QVBoxLayout, QCheckBox, QMessageBox, QLabel, QPushButton, QFileDialog
 from PyQt5.QtMultimediaWidgets import QVideoWidget
 
 shift_right = 10
@@ -59,7 +59,11 @@ class ImageComboBox(QMainWindow):
 
         self.layout.addWidget(self.image_combo_box)
         
-       
+        #=========================================================================================
+        self.btn_select_dir = QPushButton("Select Save Clips Directory")
+        #self.btn_select_dir.setGeometry(50, 50, 200, 30)
+        self.btn_select_dir.clicked.connect(self.select_dir)
+        self.layout.addWidget(self.btn_select_dir)
         #==================smallclip_label========================================================
         self.smallclip_label = QLabel()
         self.smallclip_label.setText("Anomaly Small Clips:")
@@ -88,7 +92,13 @@ class ImageComboBox(QMainWindow):
 
         self.image_label = QLabel()
         self.layout.addWidget(self.image_label)
-
+    
+    def select_dir(self):
+        options = QFileDialog.Options()
+        options |= QFileDialog.DontUseNativeDialog
+        selected_dir = QFileDialog.getExistingDirectory(self, "Select Directory", options=options)
+        self.selected_dir = selected_dir
+    
     def get_subfolders(self, directory):
         subfolders = [os.path.join(directory, f) for f in os.listdir(directory) if os.path.isdir(os.path.join(directory, f))]
         return subfolders
@@ -118,7 +128,7 @@ class ImageComboBox(QMainWindow):
             message_box.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
             result = message_box.exec_()
             if result == QMessageBox.Yes:
-                command = ['python', 'get_anomaly_image_offline.py', '--root-datadir', self.selected_directory]
+                command = ['python', 'get_anomaly_image_offline_ver2.py', '--root-datadir', self.selected_directory]
                 subprocess.run(command)
     
     def selected_directory_changed(self, index):
@@ -183,7 +193,7 @@ class ImageComboBox(QMainWindow):
             message_box.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
             result = message_box.exec_()
             if result == QMessageBox.Yes:
-                command = ['python', 'gen_shortclips.py', '--anomaly-img', selected_image, '--root-datadir', self.selected_directory]
+                command = ['python', 'gen_shortclips_ver2.py', '--anomaly-img', selected_image, '--root-datadir', self.selected_directory, '--save-anoclipdir', self.selected_dir]
                 subprocess.run(command)
                 # populate the QComboBox with a list of video files found in the directory
                 self.smallclip_combo_box.clear()
