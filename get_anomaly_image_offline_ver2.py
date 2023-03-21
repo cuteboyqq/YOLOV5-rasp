@@ -49,41 +49,44 @@ def Parsing_Result_Imgs_Labels(root_data_dir):
         if i%RANGE==0 and boundry_have_anomaly==True:
             boundry_have_anomaly=False
             
-        f_cnt,file,file_name,path_dir = Analysis_path(label_path_list[i])
-        if boundry_have_anomaly==False:
-            with open(label_path_list[i],'r') as f:
-                for line in f.readlines():
-                    print("fr {}: {}".format(f_cnt,line))
-                    #start paring each label
-                    clas = line.split(" ")[0]
-                    xyxy = line.split(" ")[1:5]
-                    conf = line.split(" ")[5]
+        #f_cnt,file,file_name,path_dir = Analysis_path(label_path_list[i])
+        
+        file_txt = "0_" + str(i) + ".txt"
+        file_path = os.path.join(root_data_dir,"0_imgs",file_txt)
+        
+        with open(file_path,'r') as f:
+            for line in f.readlines():
+                print("{}".format(line))
+                #start paring each label
+                clas = line.split(" ")[0]
+                xyxy = line.split(" ")[1:5]
+                conf = line.split(" ")[5]
+                
+                #print("class {}".format(clas))
+                #print("xyxy {}".format(xyxy))
+                #print("conf {}".format(conf))
+                
+                #Try to get the anomaly label.txt
+                if float(conf)<CONF_TH and int(clas)==0 and boundry_have_anomaly==False:
+                    #print("fr {}".format(f_cnt))
+                    print("anomaly class {}".format(clas))
+                    print("anomaly xyxy {}".format(xyxy))
+                    print("anomaly conf {}".format(conf))
+                    #get img
                     
-                    #print("class {}".format(clas))
-                    #print("xyxy {}".format(xyxy))
-                    #print("conf {}".format(conf))
+                    im = "0_" + str(i) + ".jpg"
+                    new_im = str(i) + ".jpg"
+                    path_dir = os.path.join(root_data_dir,"0_imgs")
+                    im_path = os.path.join(path_dir,im)
+                    ano_img = cv2.imread(im_path)
+                    save_path = os.path.join(root_data_dir,"anomaly_img_offline",new_im)
+                    if not os.path.exists(os.path.join(root_data_dir,"anomaly_img_offline")):
+                        os.makedirs(os.path.join(root_data_dir,"anomaly_img_offline"))
                     
-                    #Try to get the anomaly label.txt
-                    if float(conf)<CONF_TH and int(clas)==0:
-                        print("fr {}".format(f_cnt))
-                        print("anomaly class {}".format(clas))
-                        print("anomaly xyxy {}".format(xyxy))
-                        print("anomaly conf {}".format(conf))
-                        #get img
-                        
-                        im = file_name + ".jpg"
-                        new_im = str(f_cnt) + ".jpg"
-                        
-                        im_path = os.path.join(path_dir,im)
-                        ano_img = cv2.imread(im_path)
-                        save_path = os.path.join(root_data_dir,"anomaly_img_offline",new_im)
-                        if not os.path.exists(os.path.join(root_data_dir,"anomaly_img_offline")):
-                            os.makedirs(os.path.join(root_data_dir,"anomaly_img_offline"))
-                        
-                        boundry_have_anomaly=True
-                                                           
-                                                           
-                        cv2.imwrite(save_path,ano_img)
+                    boundry_have_anomaly=True
+                                                       
+                                                       
+                    cv2.imwrite(save_path,ano_img)
                    
 
 def get_args():
