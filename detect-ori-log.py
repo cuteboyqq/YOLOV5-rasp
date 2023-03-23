@@ -50,6 +50,9 @@ frame_label_list_global = []
 enable_add_label_list=True
 Total_one_frame_time=0
 frame_count_global=1
+ENABLE_FILTER_LINE=True
+SIZE_W=1280
+OVER_DIST_TH = 200
 @smart_inference_mode()
 def run(
         weights=ROOT / 'yolov5s.pt',  # model path or triton URL
@@ -145,7 +148,101 @@ def run(
 
         # Second-stage classifier (optional)
         # pred = utils.general.apply_classifier(pred, classifier_model, im, im0s)
-
+        
+        #====Alister add filter line algorithm at 2023-03-23 ======================
+        if ENABLE_FILTER_LINE:
+            print("ENABLE_FILTER_LINE:{}".format(ENABLE_FILTER_LINE))
+            left_line_x = 9999
+            left_line_y = 9999
+            right_line_x = 9999
+            right_line_y = 9999
+            
+            left_frontline_x = 0
+            left_frontline_y = 0
+            right_frontline_x = 0
+            right_frontline_y = 0
+            
+            have_line=False
+            enable_filter_left_line=False
+            enable_filter_right_line=False
+            
+            # Get left/right line in OHT
+            for i, det in enumerate(pred):  # per image
+            
+                if webcam:  # batch_size >= 1
+                    p, im0, frame = path[i], im0s[i].copy(), dataset.count
+                    s += f'{i}: '
+                else:
+                    p, im0, frame = path, im0s.copy(), getattr(dataset, 'frame', 0)
+            
+                if len(det):
+                    # Rescale boxes from img_size to im0 size
+                    det[:, :4] = scale_boxes(im.shape[2:], det[:, :4], im0.shape).round()
+                    
+                    for *xyxy, conf, cls in reversed(det):
+                        b = (xyxy2xywh(torch.tensor(xyxy).view(1,4))).view(-1).tolist()  # normalized xywh
+                        c = int(cls)  # integer class
+                        print("c = {}".format(c))
+                        print("1. xywh_list:")
+                        print(b)
+                        #xyxy_list = (xywh2xyxy(torch.tensor(xywh).view(1, 4))).view(-1).tolist(if
+                        if int(b[2]) >0:
+                            if int(cls)==0 and float(int(b[0])/int(SIZE_W)) < 0.50 :
+                                left_line_x=int(b[0])
+                                left_line_y=int(b[1])
+                                have_line = True
+                            elif int(cls)==0 and float(int(b[0])/int(SIZE_W))  > 0.50 :
+                                right_line_x=int(b[0])
+                                right_line_y=int(b[1])
+                                have_line = True
+                            
+            print("left_line_x :{}".format(left_line_x))
+            print("left_line_y :{}".format(left_line_y))
+            print("right_line_x :{}".format(right_line_x))
+            print("right_line_y :{}".format(right_line_y))
+            
+            # Calculate the overlapping distance between left/right line and other bounding boxes            
+            for i, det in enumerate(pred):  # per image
+            
+                if webcam:  # batch_size >= 1
+                    p, im0, frame = path[i], im0s[i].copy(), dataset.count
+                    s += f'{i}: '
+                else:
+                    p, im0, frame = path, im0s.copy(), getattr(dataset, 'frame', 0)
+                
+                #if len(det):
+                    # Rescale boxes from img_size to im0 size
+                    #det[:, :4] = scale_boxes(im.shape[2:], det[:, :4], im0.shape).round()
+                
+                if enable_filter_left_line==False or enable_filter_right_line==False:
+                    for *xyxy, conf, cls in reversed(det):
+                        b = (xyxy2xywh(torch.tensor(xyxy).view(1,4))).view(-1).tolist()  # normalized xywh
+                        c = int(cls)  # integer class
+                        #xywh_list = (xyxy2xywh(torch.tensor(xyxy).view(1,4))).view(-1).tolist()  # normalized xywh
+                        #xywh_list = (xyxy2xywh(torch.tensor(xyxy).view(1,4))).tolist()
+                        #xywh_list = (xyxy2xywh(torch.tensor(xyxy).view(1, 4))).view(-1).tolist()
+                        print("2. xywh_list:")
+                        print(b)
+                        if int(b[2]) >0:
+                            if int(cls)!=0 and float(int(b[0])/int(SIZE_W)) < 0.50 :
+                                left_frontline_x=int(b[0])
+                                left_frontline_y=int(b[1])
+                                #if left line overlapping distance < OVER_DIST_TH , filter left line
+                                if abs(left_frontline_x-left_line_x) < OVER_DIST_TH and abs(left_frontline_y-left_line_y)<OVER_DIST_TH:
+                                    enable_filter_left_line=True
+                                    
+                            elif int(cls)!=0 and float(int(b[0])/int(SIZE_W)) > 0.50 :
+                                right_frontline_x=int(b[0])
+                                right_frontline_y=int(b[1])
+                                #if right line overlapping distance < OVER_DIST_TH, filter right line 
+                                if abs(right_frontline_x-right_line_x) < OVER_DIST_TH and abs(right_frontline_y-right_line_y)<OVER_DIST_TH:
+                                    enable_filter_right_line=True
+                
+                print("enable_filter_left_line:{}".format(enable_filter_left_line))
+                print("enable_filter_right_line:{}".format(enable_filter_right_line))
+                
+        #==========================================================================
+        
         # Process predictions
         for i, det in enumerate(pred):  # per image
             seen += 1
@@ -154,7 +251,8 @@ def run(
                 s += f'{i}: '
             else:
                 p, im0, frame = path, im0s.copy(), getattr(dataset, 'frame', 0)
-
+            #=========Alister add 2023-03-23=============================
+            #===========================================================
             p = Path(p)  # to Path
             save_path = str(save_dir / p.name)  # im.jpg
             txt_path = str(save_dir / 'labels' / p.stem) + ('' if dataset.mode == 'image' else f'_{frame}')  # im.txt
@@ -167,7 +265,7 @@ def run(
             annotator.time_label(frame_count=int(frame), txt_color=(0,255,128),w=1280.0,h=720.0,enable_frame=True)
             if len(det):
                 # Rescale boxes from img_size to im0 size
-                det[:, :4] = scale_boxes(im.shape[2:], det[:, :4], im0.shape).round()
+                #det[:, :4] = scale_boxes(im.shape[2:], det[:, :4], im0.shape).round()
 
                 # Print results
                 for c in det[:, 5].unique():
@@ -176,6 +274,8 @@ def run(
 
                 # Write results
                 for *xyxy, conf, cls in reversed(det):
+                    
+                    
                     if save_txt:  # Write to file
                         xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
                         line = (cls, *xywh, conf) if save_conf else (cls, *xywh)  # label format
@@ -183,8 +283,9 @@ def run(
                             f.write(('%g ' * len(line)).rstrip() % line + '\n')
                     
                     
-                    #=======================Alister add 2023-03-16===================
+                    #=======================Alister add 2023-03-16 use list to save logs and save log.txt===================
                     if enable_add_label_list:
+                        b = (xyxy2xywh(torch.tensor(xyxy).view(1,4))).view(-1).tolist()  # normalized xywh
                         save_log_path = os.path.join(save_dir,'log.txt')
                         save_conf_log = True
                         #xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
@@ -199,8 +300,14 @@ def run(
                         #print(la)
                         #frame_label_list_global.append([f'{txt_path}.txt',('%g ' * len(line)).rstrip() % line ])
                         #frame_str = str(frame)
-                        frame_label_list_global.append(f'{txt_path}.txt {la}')
-                        
+                        #Alister 2023-03-23 filterline criteria
+                        if c==0 and enable_filter_left_line==False and b[0]<SIZE_W/2.0:
+                            frame_label_list_global.append(f'{txt_path}.txt {la}')
+                        elif c==0 and enable_filter_right_line==False and b[0]>SIZE_W/2.0:
+                            frame_label_list_global.append(f'{txt_path}.txt {la}')
+                        elif not c==0:
+                            frame_label_list_global.append(f'{txt_path}.txt {la}')
+                            
                         nn = len(frame_label_list_global) if len(frame_label_list_global)<=10 else 10
                         nn_real = len(frame_label_list_global)
                         #print("n = {}".format(nn))
@@ -236,15 +343,28 @@ def run(
                         annotator.box_label(xyxy, label, color=colors(c, True))
                     '''
                     if save_img or save_crop or view_img:  # Add bbox to image
+                        #Alister add 2023-03-23
+                        b = (xyxy2xywh(torch.tensor(xyxy).view(1,4))).view(-1).tolist()  # normalized xywh
                         c = int(cls)  # integer class
+                        
+                        
+                        
                         label = None if hide_labels else (names[c] if hide_conf else f'{names[c]} {conf:.2f}')
                         #annotator.box_label(xyxy, label, color=colors(c, True))
                         #if c==0 and filter_line_label==False: #noline (test)
-                        if c==0: #noline (test)
+                        
+                        if c==0 and enable_filter_left_line==False and b[0]<SIZE_W/2.0: #noline (test)
                             if conf<0.70:
                                 annotator.box_label(xyxy, label+" anomaly" , color=(255,0,128))
                             else:
                                 annotator.box_label(xyxy, label+" normal" , color=(255,0,0))
+                        elif c==0 and enable_filter_right_line==False and b[0]>SIZE_W/2.0:
+                            if conf<0.70:
+                                annotator.box_label(xyxy, label+" anomaly" , color=(255,0,128))
+                            else:
+                                annotator.box_label(xyxy, label+" normal" , color=(255,0,0))
+                        
+            
                         elif not c==0:
                             annotator.box_label(xyxy, label, color=colors(c, True))
                     if save_crop:
