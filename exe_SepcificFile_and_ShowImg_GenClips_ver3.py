@@ -26,7 +26,7 @@ FOLDER_PATH=DATA_DIR
 class ImageComboBox(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Anomaly Image & Clips")
+        self.setWindowTitle("GUI of View Anomaly Image & Clips")
         self.setGeometry(20, 20, 500, 250)
 
         self.central_widget = QWidget()
@@ -156,7 +156,7 @@ class ImageComboBox(QMainWindow):
             QMessageBox.warning(self, "Error", "Need log.txt and 0.avi")
         else:
             if os.path.exists(os.path.join(folder_path,"0_result_offline.avi")):
-                reply = QMessageBox.information(self, 'Integration', 'Already Have Parsing Result Stream/Images, do you want to re-generate it?',
+                reply = QMessageBox.information(self, 'Integration', 'Already Have Parsed log.txt , do you want to re-generate it?',
                 QMessageBox.Ok | QMessageBox.Close, QMessageBox.Close)
             else:
                 reply = QMessageBox.information(self, 'Integration', 'Start to generate ai result video',QMessageBox.Ok | QMessageBox.Close, QMessageBox.Close)
