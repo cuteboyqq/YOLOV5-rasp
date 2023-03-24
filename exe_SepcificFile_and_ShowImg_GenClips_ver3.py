@@ -34,9 +34,17 @@ class ImageComboBox(QMainWindow):
         self.layout = QVBoxLayout(self.central_widget)
         #self.layout = QVBoxLayout()
         #=========================================================================================
+        #==================QCheckBox====================================================
+        self.check_box2 = QCheckBox('Step 1: Enable/Disable Anomaly Clips Show OD Result',self)
+        self.check_box2.setFont(QFont(FONT, FONT_SIZE))  # set the font size
+        self.check_box2.stateChanged.connect(self.generate_short_clips_changed)
+        self.layout.addWidget(self.check_box2)
+        #self.image_label = QLabel()
+        #self.layout.addWidget(self.image_label)
+        #======================================================================
         #================================================
         self.source_label = QLabel(self)
-        self.source_label.setText("Select OD Result Folder to Parsing Log.txt:")
+        self.source_label.setText("Step 2: Select OD Result Folder to Parsing Log.txt:")
         self.source_label.setFont(QFont("Times New Roman", 12))  # set the font size
         self.source_label.setGeometry(25, 250, 350, 30)
         self.layout.addWidget(self.source_label)
@@ -62,7 +70,7 @@ class ImageComboBox(QMainWindow):
         #==================directory_label========================================================
         if SHOW_LABELS:
             self.directory_label = QLabel()
-            self.directory_label.setText("Select OD Result Directories:")
+            self.directory_label.setText("Step 3: Select OD Result Directories:")
             self.directory_label.setFont(QFont(FONT, FONT_SIZE))  # set the font size
             #self.directory_label.setGeometry(10+shift_right, 0, 200, 60)
             self.layout.addWidget(self.directory_label)
@@ -81,7 +89,7 @@ class ImageComboBox(QMainWindow):
         #==================image_label========================================================
         if SHOW_LABELS:
             self.image_label = QLabel()
-            self.image_label.setText("Select Anoamly Image:")
+            self.image_label.setText("Step 4: Select/View Anoamly Image:")
             self.image_label.setFont(QFont(FONT, FONT_SIZE))  # set the font size
             #self.directory_label.setGeometry(10+shift_right, 0, 200, 60)
             self.layout.addWidget(self.image_label)
@@ -103,7 +111,7 @@ class ImageComboBox(QMainWindow):
         #==================smallclip_label========================================================
         if SHOW_LABELS:
             self.smallclip_label = QLabel()
-            self.smallclip_label.setText("Select Anomaly Small Clips:")
+            self.smallclip_label.setText("Step 6: Select Anomaly Small Clips and Show It:")
             self.smallclip_label.setFont(QFont(FONT, FONT_SIZE))  # set the font size
             #self.directory_label.setGeometry(10+shift_right, 0, 200, 60)
             self.layout.addWidget(self.smallclip_label)
@@ -118,11 +126,9 @@ class ImageComboBox(QMainWindow):
         self.mediaPlayer = QMediaPlayer(self)
         self.videoWidget = QVideoWidget(self)
         self.player_process = None
-        #=============================================================
-        
-        
-
-        self.check_box = QCheckBox('Generate Short Anomaly Clips', self)
+        #=================QCheckBox============================================
+    
+        self.check_box = QCheckBox('Step 5: Generate Short Anomaly Clips', self)
         self.check_box.setFont(QFont(FONT, FONT_SIZE))  # set the font size
         self.check_box.stateChanged.connect(self.generate_short_clips_changed)
 
@@ -130,7 +136,7 @@ class ImageComboBox(QMainWindow):
 
         self.image_label = QLabel()
         self.layout.addWidget(self.image_label)
-        #======================================================================
+        
         # Set up layout
         #layout = QVBoxLayout(self)
       
@@ -161,8 +167,12 @@ class ImageComboBox(QMainWindow):
             else:
                 reply = QMessageBox.information(self, 'Integration', 'Start to generate ai result video',QMessageBox.Ok | QMessageBox.Close, QMessageBox.Close)
             if reply == QMessageBox.Ok:
-                # Execute the command using subprocess
-                command = ["python", "log_parser_ver2.py", "--log-dir", folder_path, "--video-path",video_path]
+                if self.check_box2.isChecked():
+                    # Execute the command using subprocess
+                    command = ["python", "log_parser_ver2.py", "--log-dir", folder_path, "--video-path",video_path, "--save-airesult"]
+                else:
+                    # Execute the command using subprocess
+                    command = ["python", "log_parser_ver2.py", "--log-dir", folder_path, "--video-path",video_path]
                 #subprocess.run(command)
                 try:
                     process = subprocess.run(command, check=True)
