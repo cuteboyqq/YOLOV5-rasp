@@ -35,7 +35,7 @@ def Generate_Short_Clips(root_data_dir=r"/home/ali/GitHub_Code/cuteboyqq/YOLO/YO
                          save_ano_clip_dir=None
                          ):
     
-    img_list=glob.glob(os.path.join(data_dir,'*.jpg'))
+    img_list=glob.glob(os.path.join(root_data_dir,'0_imgs','*.jpg'))
     
     
     #Get the left boundary
@@ -83,12 +83,12 @@ def get_args():
     
     parser = argparse.ArgumentParser()
     
-    parser.add_argument('-datadir','--data-dir',help="folder 0_imgs path",default= r"/home/ali/GitHub_Code/cuteboyqq/YOLO/YOLOV5-rasp/runs/detect/exp2/0_imgs")
-    parser.add_argument('-rootdatadir','--root-datadir',help="folder of root data",default=r"/home/ali/GitHub_Code/cuteboyqq/YOLO/YOLOV5-rasp/runs/detect/exp2")
-    parser.add_argument('-anomalyimg','--anomaly-img',help="anomaly image file ex:0_50.jpg",default="0_300.jpg")
+    parser.add_argument('-datadir','--data-dir',help="folder 0_imgs path",default= r"/home/ali/Desktop/YOLOV5-rasp/runs/detect/exp2/0_imgs")
+    parser.add_argument('-rootdatadir','--root-datadir',help="folder of root data",default=r"/home/ali/Desktop/YOLOV5-rasp/runs/detect/exp2")
+    parser.add_argument('-anomalyimg','--anomaly-img',help="anomaly image file ex:0_50.jpg",default="0_20.jpg")
     parser.add_argument('-shiftleft','--shift-left',type=int,help="the left frame range of the stream",default=40)
     parser.add_argument('-shiftright','--shift-right',type=int,help="the right frame range of the stream",default=40)
-    parser.add_argument('--saveanoclipdir','--save-anoclipdir',help="the directory of save anomaly clips",default=r"/home/ali/GitHub_Code/cuteboyqq/YOLO/YOLOV5-rasp/runs/detect/exp2/anomaly_clips")
+    parser.add_argument('--saveanoclipdir','--save-anoclipdir',help="the directory of save anomaly clips",default=r"/home/ali/Desktop/YOLOV5-rasp/runs/detect/exp2/anomaly_clips")
     
     return parser.parse_args()
                

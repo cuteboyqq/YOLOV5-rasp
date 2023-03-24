@@ -59,7 +59,7 @@ def Analysis_path(path):
     return file,file_name,file_dir
 
 #c_file,c_file_name,c_file_dir = Analysis_path(class_path)
-SET_FPS = 20
+SET_FPS = 10
 SET_W = 1280
 SET_H = 720
 from datetime import datetime
@@ -71,7 +71,8 @@ def video_extract_frame(path,
                         class_path,
                         img_size,
                         yolo_infer_txt,
-                        log_dir):
+                        log_dir,
+                        save_airesult):
     
     #Alister add 2023-02-28
     if SAVE_RAW_STREAM:
@@ -87,24 +88,39 @@ def video_extract_frame(path,
     
     vidcap = cv2.VideoCapture(path)
     success,image = vidcap.read()
+    image_od_result = image.copy()
     count = 0
     file,filename,file_dir = Analysis_path(path)
     print(file," ",filename," ",file_dir)
     save_folder_name =  filename + "_imgs"
     save_dir = os.path.join(file_dir,save_folder_name)
-    
+    '''
+    save_ori_folder_name =  filename + "_ori_imgs"
+    save_ori_dir = ps.path.join(file_dir,save_ori_folder_name)
+    '''
+    #remove old 0_img folder
     if os.path.exists(save_dir):
         shutil.rmtree(save_dir)
-    
+    #create 0_img folder
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
+    '''
+    #remove old 0_ori_img folder
+    if os.path.exists(save_ori_dir):
+        shutil.rmtree(save_ori_dir)
+    #create 0_ori_img folder
+    if not os.path.exists(save_ori_dir):
+        os.makedirs(save_ori_dir)
+    ''' 
     
-    #Copy class.txt to save_dir
-    shutil.copy(class_path,save_dir)
+    #Copy class.txt to save_dir , no need now
+    #shutil.copy(class_path,save_dir)
     
     while True:
         if success:
             namess = "2023-03-17"
+            #drawing on image_od_result
+            annotator_for_odresult = Annotator(image_od_result, line_width=2, example=str(namess))
             annotator = Annotator(image, line_width=2, example=str(namess))
             if count%skip_frame==0:
                 
@@ -135,7 +151,7 @@ def video_extract_frame(path,
                             print("conf_str = {}".format(conf_str))
                             
                             #Not implemented
-                            save_airesult=True
+                            #save_airesult=True
                             hide_labels = False
                             hide_conf = False
                             names = ["line","noline","others","frontline"]
@@ -152,6 +168,20 @@ def video_extract_frame(path,
                                         annotator.box_label(xyxy, label+" normal" , color=(255,0,0))
                                 elif not c==0:
                                     annotator.box_label(xyxy, label, color=colors(c, True))
+                                    
+                            #For OD result frame, get BB info and draw to frame 2023-03-24
+                            #=====End parsing label.txt, try to get the xyxy and cls informations======================
+                            c = int(label_str)  # integer class
+                            label = None if hide_labels else (names[c] if hide_conf else f'{names[c]} {conf_f:.2f}')
+                            #annotator.box_label(xyxy, label, color=colors(c, True))
+                            #if c==0 and filter_line_label==False: #noline (test)
+                            if c==0: #noline (test)
+                                if conf_f<0.70:
+                                    annotator_for_odresult.box_label(xyxy, label+" anomaly" , color=(255,0,128))
+                                else:
+                                    annotator_for_odresult.box_label(xyxy, label+" normal" , color=(255,0,0))
+                            elif not c==0:
+                                annotator_for_odresult.box_label(xyxy, label, color=colors(c, True))
                     #===========================================================
                 
             #==============================================
@@ -162,9 +192,9 @@ def video_extract_frame(path,
                 #if not SET_H is 720:
                     #image = image[..., ::-1]
                 #annotator.time_label(frame_count=self.count,txt_color=(0,255,128))
-                vw.write(image)
+                vw.write(image_od_result)
             #==============================================
-                
+                #save the raw images without Drawing OD Bounding Box
                 cv2.imwrite(img_path,image)
                 print("save image complete",img_path)
                 
@@ -182,6 +212,7 @@ def video_extract_frame(path,
             print('Video capture failed, break')
             break
         success,image = vidcap.read()
+        image_od_result = image.copy()
         #print('Read a new frame: ', success)
         count += 1
 
@@ -200,7 +231,8 @@ def get_args():
     parser.add_argument('-yoloinfer','--yolo-infer',action='store_true',help="have yolo infer txt")
     #parser.add_argument('-yolotxt','--yolo-txt',help="yolo infer label txt dir",default="/home/ali/factory_video/2023-03-04/labels")
     parser.add_argument('-yolotxt','--yolo-txt',help="yolo infer label txt dir",default="/home/ali/GitHub_Code/cuteboyqq/YOLO/YOLOV5-rasp/runs/detect/2023-03-1712/labels")
-    parser.add_argument('-classtxt','--class-txt',help="class.txt path",default="/home/ali/GitHub_Code/cuteboyqq/YOLO/YOLOV5-rasp/classes.txt")
+    parser.add_argument('-classtxt','--class-txt',help="class.txt path",default="/home/ali/Desktop/YOLOV5-rasp/classes.txt")
+    parser.add_argument('-saveairesult','--save-airesult',action='store_true',help="Save object detection result")
     
     return parser.parse_args()
     
@@ -214,6 +246,7 @@ if __name__=="__main__":
     yolo_infer = args.yolo_infer
     img_size = args.img_size
     log_dir = args.log_dir
+    save_siresult = args.save_airesult
     print("video_path =",video_path)
     print("skip_frame = ",skip_frame)
     print("yolo_txt_dir = ",yolo_txt_dir)
@@ -231,7 +264,8 @@ if __name__=="__main__":
                         class_path, 
                         img_size,
                         True,
-                        log_dir)
+                        log_dir,
+                        save_siresult)
     
     
         

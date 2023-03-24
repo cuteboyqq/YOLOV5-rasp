@@ -16,6 +16,12 @@ import logging
 from datetime import datetime
 shift_right = 50
 logging.basicConfig(filename='example.log', level=logging.DEBUG)
+#Setting the folder path for code  to use
+
+FOLDER_PATH = r"/home/ali/GitHub_Code/cuteboyqq/YOLO/YOLOV5-rasp/runs/detect"
+if not os.path.exists(FOLDER_PATH):
+    os.makedirs(FOLDER_PATH)
+    
 class MainWindow(QMainWindow):
     def __init__(self,video_dir):
         super().__init__()
@@ -32,7 +38,7 @@ class MainWindow(QMainWindow):
         self.comboBox.setGeometry(350, 250, 300, 30)
 
         # Populate the QComboBox with folder names
-        folder_path = r"/home/ali/Desktop/YOLOV5-rasp/runs/detect"
+        folder_path = FOLDER_PATH
         folder_names = [f for f in os.listdir(folder_path) if os.path.isdir(os.path.join(folder_path, f))]
         self.comboBox.addItems(folder_names)
 
@@ -162,8 +168,8 @@ class MainWindow(QMainWindow):
         
     def onComboBoxActivated(self, folder_name):
         # Get the full path of the selected folder
-        folder_path = os.path.join(r"/home/ali/Desktop/YOLOV5-rasp/runs/detect", folder_name)
-        video_path = os.path.join(r"/home/ali/Desktop/YOLOV5-rasp/runs/detect",folder_name,"0.avi")
+        folder_path = os.path.join(FOLDER_PATH, folder_name)
+        video_path = os.path.join(FOLDER_PATH,folder_name,"0.avi")
         # Set the folder path as a command parameter
         sys.argv = ['log_parser_ver2.py', '--log-dir', folder_path, '--video-path', video_path]
         
@@ -252,7 +258,7 @@ class MainWindow(QMainWindow):
     #=========================================================================
     def initialize_folder_combobox(self):
         # get the specific directory
-        specific_dir = r"/home/ali/Desktop/YOLOV5-rasp/runs/detect"
+        specific_dir = FOLDER_PATH
 
         # get the list of folders in the directory
         folders = [f.name for f in os.scandir(specific_dir) if f.is_dir()]
@@ -265,7 +271,7 @@ class MainWindow(QMainWindow):
         selected_folder = self.folder_combobox.currentText()
 
         # get the specific directory
-        specific_dir = r"/home/ali/Desktop/YOLOV5-rasp/runs/detect"
+        specific_dir = FOLDER_PATH
 
         # get the list of files in the selected folder
         file_list = os.listdir(os.path.join(specific_dir, selected_folder))
@@ -288,7 +294,7 @@ class MainWindow(QMainWindow):
         selected_folder = self.folder_combobox.currentText()
     
         # get the specific directory
-        specific_dir = r"/home/ali/Desktop/YOLOV5-rasp/runs/detect"
+        specific_dir = FOLDER_PATH
     
         # get the full path to the selected file
         file_path = os.path.join(specific_dir, selected_folder, item.text())
@@ -429,7 +435,8 @@ class MainWindow(QMainWindow):
         source_type = self.source_combo.currentText()
         view_img = "--view-img" if self.viewimg_checkbox.isChecked() else ""
         save_airesult = "--save-airesult" if self.saveairesult_checkbox.isChecked() else ""
-        weights = "--weights runs/train/f192_3cls_Argos_2023-03-11/weights/best-int8_edgetpu.tflite"
+        #weights = "--weights runs/train/f192_3cls_Argos_2023-03-11/weights/best.pt"
+        weights = "--weights runs/train/f192-4cls-Argos-2023-03-20/weights/best.pt"
         img_size = "--img-size 192"
         data = "--data data/factory_new2.yaml"
         #save_folder_name = "--name "+str_s_time
@@ -458,7 +465,7 @@ class MainWindow(QMainWindow):
             
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    video_dir = r"/home/ali/Desktop/YOLOV5-rasp/runs/detect"  # Replace with the path to your video folder
+    video_dir = FOLDER_PATH  # Replace with the path to your video folder
     window = MainWindow(video_dir)
     #window.setup_ui()
 
