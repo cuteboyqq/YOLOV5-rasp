@@ -285,6 +285,7 @@ def run(
                     
                     #=======================Alister add 2023-03-16 use list to save logs and save log.txt===================
                     if enable_add_label_list:
+                        cl=int(cls)
                         b = (xyxy2xywh(torch.tensor(xyxy).view(1,4))).view(-1).tolist()  # normalized xywh
                         save_log_path = os.path.join(save_dir,'log.txt')
                         save_conf_log = True
@@ -301,11 +302,11 @@ def run(
                         #frame_label_list_global.append([f'{txt_path}.txt',('%g ' * len(line)).rstrip() % line ])
                         #frame_str = str(frame)
                         #Alister 2023-03-23 filterline criteria
-                        if c==0 and enable_filter_left_line==False and b[0]<SIZE_W/2.0:
+                        if cl==0 and enable_filter_left_line==False and b[0]<SIZE_W/2.0:
                             frame_label_list_global.append(f'{txt_path}.txt {la}')
-                        elif c==0 and enable_filter_right_line==False and b[0]>SIZE_W/2.0:
+                        elif cl==0 and enable_filter_right_line==False and b[0]>SIZE_W/2.0:
                             frame_label_list_global.append(f'{txt_path}.txt {la}')
-                        elif not c==0:
+                        elif not cl==0:
                             frame_label_list_global.append(f'{txt_path}.txt {la}')
                             
                         nn = len(frame_label_list_global) if len(frame_label_list_global)<=10 else 10
