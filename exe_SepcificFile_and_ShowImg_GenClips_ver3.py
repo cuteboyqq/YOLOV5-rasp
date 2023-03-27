@@ -17,11 +17,13 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QComboBox, QWidget, QVBox
 from PyQt5.QtMultimediaWidgets import QVideoWidget
 
 shift_right = 10
-FONT_SIZE = 12
+FONT_SIZE = 14
 #FONT="Arial" # Times New Roman
 FONT= "Times New Roman"
 SHOW_LABELS=True
-DATA_DIR=r"/home/ali/Desktop/YOLOV5-rasp/runs/detect/"
+DATA_DIR=r"/home/ali/GitHub_Code/cuteboyqq/YOLO/YOLOV5-rasp/runs/detect"
+if not os.path.exists(DATA_DIR):
+    os.makedirs(DATA_DIR)
 FOLDER_PATH=DATA_DIR
 class ImageComboBox(QMainWindow):
     def __init__(self):
@@ -45,7 +47,7 @@ class ImageComboBox(QMainWindow):
         #================================================
         self.source_label = QLabel(self)
         self.source_label.setText("Step 2: Select OD Result Folder to Parsing Log.txt:")
-        self.source_label.setFont(QFont("Times New Roman", 12))  # set the font size
+        self.source_label.setFont(QFont("Times New Roman", FONT_SIZE))  # set the font size
         self.source_label.setGeometry(25, 250, 350, 30)
         self.layout.addWidget(self.source_label)
         

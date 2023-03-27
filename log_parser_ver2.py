@@ -212,7 +212,8 @@ def video_extract_frame(path,
             print('Video capture failed, break')
             break
         success,image = vidcap.read()
-        image_od_result = image.copy()
+        if success:
+            image_od_result = image.copy()
         #print('Read a new frame: ', success)
         count += 1
 
