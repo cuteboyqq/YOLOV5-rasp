@@ -32,15 +32,24 @@ def parse_log_txt(log_dir="runs/detect/"):
     #with open(r"C:\GitHub_Code\cuteboyqq\YOLO\YOLOV5-rasp\runs\detect\exp22\log.txt") as f:
     with open(log_path) as f:
         for line in f.readlines():
+            #format  : [label file path] cls x y w h conf 
             save_txt_path = line.split(" ")[0]
-            label = line.split(" ")[1:]
+            label = line.split(" ")[1:] # cls x y x y conf 23-03-27 14:10:08 fr:10
+            #label = line.split(" ")[1:7] # cls x y x y conf
             label_str = ' '.join(x for x in label)
+            
+            #timestamp = line.split(" ")[7:] # examaple : 23-03-27 14:10:08 fr:10
+            #timestamp_str = ' '.join(x for x in timestamp)
+            
+            
+            
             print(line.split(" ")[0])
             
             
             file,file_name,file_dir = Analysis_path(save_txt_path)
             if not os.path.exists(file_dir):
                 os.makedirs(file_dir)
+            # generate label.txt of each frame (format is cls x y x y conf)
             with open(save_txt_path,'a') as l_f:
                 l_f.write(label_str)
     
@@ -137,7 +146,7 @@ def video_extract_frame(path,
                     with open(txt_path,'r') as f:
                         for line in f.readlines():
                             print(line)
-                            #Line format is [class] x y w h
+                            #Line format is [class] x y w h conf
                             #Try to get xywh
                             xyxy = line.split(" ")[1:5]
                             label = line.split(" ")[0]
@@ -171,6 +180,7 @@ def video_extract_frame(path,
                                     
                             #For OD result frame, get BB info and draw to frame 2023-03-24
                             #=====End parsing label.txt, try to get the xyxy and cls informations======================
+                            #=================Saving the complete OD result frame "image_od_result" into Stream=====================================
                             c = int(label_str)  # integer class
                             label = None if hide_labels else (names[c] if hide_conf else f'{names[c]} {conf_f:.2f}')
                             #annotator.box_label(xyxy, label, color=colors(c, True))
@@ -225,14 +235,14 @@ def get_args():
     #parser.add_argument('-videopath','--video-path',help="input video path",default="/home/ali/Argos_Project/Factory_Project/Screen_record_Argos_Stream/20230314_203715.mp4")
     #parser.add_argument('-videopath','--video-path',help="input video path",default="/home/ali/factory_video/Argos_Record/2023-03-15/SmallScreen_Record/filterline_version2/YoloV4-f320-4cls/20230315-215557-H264-00.mp4")
     #parser.add_argument('-videopath','--video-path',help="input video path",default="/home/ali/GitHub_Code/cuteboyqq/YOLO/YOLOV5-rasp/runs/detect/2023-03-17/0.avi")
-    parser.add_argument('-videopath','--video-path',help="input video path",default=r"C:\GitHub_Code\cuteboyqq\YOLO\YOLOV5-rasp\runs\detect\exp23\0.avi")
-    parser.add_argument('-logdir','--log-dir',help="input log directory",default=r"C:\GitHub_Code\cuteboyqq\YOLO\YOLOV5-rasp\runs\detect\exp23")
+    parser.add_argument('-videopath','--video-path',help="input video path",default=r"/home/ali/GitHub_Code/cuteboyqq/YOLO/YOLOV5-rasp/runs/detect/exp6/0.avi")
+    parser.add_argument('-logdir','--log-dir',help="input log directory",default=r"/home/ali/GitHub_Code/cuteboyqq/YOLO/YOLOV5-rasp/runs/detect/exp6")
     parser.add_argument('-skipf','--skip-f',type=int,help="number of skp frame",default=1)
     parser.add_argument('-imgsize','--img-size',type=int,help="size of images",default=640)
     parser.add_argument('-yoloinfer','--yolo-infer',action='store_true',help="have yolo infer txt")
     #parser.add_argument('-yolotxt','--yolo-txt',help="yolo infer label txt dir",default="/home/ali/factory_video/2023-03-04/labels")
     parser.add_argument('-yolotxt','--yolo-txt',help="yolo infer label txt dir",default="/home/ali/GitHub_Code/cuteboyqq/YOLO/YOLOV5-rasp/runs/detect/2023-03-1712/labels")
-    parser.add_argument('-classtxt','--class-txt',help="class.txt path",default="/home/ali/Desktop/YOLOV5-rasp/classes.txt")
+    parser.add_argument('-classtxt','--class-txt',help="class.txt path",default="/home/ali/GitHub_Code/cuteboyqq/YOLO/YOLOV5-rasp/classes.txt")
     parser.add_argument('-saveairesult','--save-airesult',action='store_true',help="Save object detection result")
     
     return parser.parse_args()

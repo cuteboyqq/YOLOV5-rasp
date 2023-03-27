@@ -58,10 +58,12 @@ def Parsing_Result_Imgs_Labels(root_data_dir):
                 for line in f.readlines():
                     print("{}".format(line))
                     #start paring each label
+                    #format : class x y x y conf 23-03-27 10:10:10 f:87
                     clas = line.split(" ")[0]
                     xyxy = line.split(" ")[1:5]
                     conf = line.split(" ")[5]
-                    
+                    timestamp = line.split(" ")[6:8]
+                    timestamp_str = ' '.join(x for x in timestamp)
                     #print("class {}".format(clas))
                     #print("xyxy {}".format(xyxy))
                     #print("conf {}".format(conf))
@@ -75,7 +77,10 @@ def Parsing_Result_Imgs_Labels(root_data_dir):
                         #get img
                         
                         im = "0_" + str(i) + ".jpg"
-                        new_im = str(i) + ".jpg"
+                        #2023-03-27 image file name adding timestamp
+                        #new_im = str(i) + ".jpg"
+                        new_im = str(i)+" "+ timestamp_str + ".jpg"
+                        
                         path_dir = os.path.join(root_data_dir,"0_imgs")
                         im_path = os.path.join(path_dir,im)
                         ano_img = cv2.imread(im_path)
@@ -92,7 +97,7 @@ def Parsing_Result_Imgs_Labels(root_data_dir):
 def get_args():
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('-rootdatadir','--root-datadir',help="the directory of inference result dataset",default=r"/home/ali/Desktop/YOLOV5-rasp/runs/detect/exp2")
+    parser.add_argument('-rootdatadir','--root-datadir',help="the directory of inference result dataset",default=r"/home/ali/GitHub_Code/cuteboyqq/YOLO/YOLOV5-rasp/runs/detect/exp6")
     
     return parser.parse_args()    
 
