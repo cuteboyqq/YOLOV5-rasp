@@ -92,7 +92,7 @@ def Parsing_Result_Imgs_Labels(root_data_dir):
 def get_args():
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('-rootdatadir','--root-datadir',help="the directory of inference result dataset",default=r"/home/ali/GitHub_Code/cuteboyqq/YOLO/YOLOV5-rasp/runs/detect/exp2")
+    parser.add_argument('-rootdatadir','--root-datadir',help="the directory of inference result dataset",default=r"/home/ali/Desktop/YOLOV5-rasp/runs/detect/exp2")
     
     return parser.parse_args()    
 

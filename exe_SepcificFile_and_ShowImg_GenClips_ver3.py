@@ -21,7 +21,7 @@ FONT_SIZE = 12
 #FONT="Arial" # Times New Roman
 FONT= "Times New Roman"
 SHOW_LABELS=True
-DATA_DIR=r"/home/ali/GitHub_Code/cuteboyqq/YOLO/YOLOV5-rasp/runs/detect/"
+DATA_DIR=r"/home/ali/Desktop/YOLOV5-rasp/runs/detect/"
 FOLDER_PATH=DATA_DIR
 class ImageComboBox(QMainWindow):
     def __init__(self):
@@ -228,10 +228,23 @@ class ImageComboBox(QMainWindow):
             if result == QMessageBox.Yes:
                 command = ['python', 'get_anomaly_image_offline_ver2.py', '--root-datadir', self.selected_directory]
                 subprocess.run(command)
+        else:
+            message_box = QMessageBox()
+            message_box.setIcon(QMessageBox.Question)
+            message_box.setText("Already collected, do you want to re-generate it?")
+            message_box.setWindowTitle("Get Anomaly Images")
+            message_box.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+            result = message_box.exec_()
+            if result == QMessageBox.Yes:
+                command = ['python', 'get_anomaly_image_offline_ver2.py', '--root-datadir', self.selected_directory]
+                subprocess.run(command)
     
     def selected_directory_changed(self, index):
         self.selected_directory = self.directory_combo_box.currentText()
         self.image_combo_box.clear()
+        #if not os.path.exists(os.path.join(self.selected_directory, 'anomaly_img_offline')):
+            #os.makedirs(os.path.join(self.selected_directory, 'anomaly_img_offline'))
+            
         self.image_combo_box.addItems(self.get_image_files(os.path.join(self.selected_directory, 'anomaly_img_offline')))
         #2023-03-22 modified use  custom directory
         self.anomaly_clips_offline = os.path.join(self.selected_directory, 'anomaly_clips')
