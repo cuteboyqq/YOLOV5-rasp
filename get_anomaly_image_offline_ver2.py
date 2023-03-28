@@ -25,6 +25,12 @@ def Analysis_path(path):
 
 def Parsing_Result_Imgs_Labels(root_data_dir):
     print(root_data_dir)
+    if os.path.exists(os.path.join(root_data_dir,"anomaly_img_offline")):
+        shutil.rmtree(os.path.join(root_data_dir,"anomaly_img_offline"))
+    if not os.path.exists(os.path.join(root_data_dir,"anomaly_img_offline")):
+        os.makedirs(os.path.join(root_data_dir,'anomaly_img_offline'))
+    
+    
     if os.path.exists(os.path.join(root_data_dir,"anomaly_clips")):
         shutil.rmtree(os.path.join(root_data_dir,"anomaly_clips"))
     if not os.path.exists(os.path.join(root_data_dir,"anomaly_clips")):
@@ -43,6 +49,7 @@ def Parsing_Result_Imgs_Labels(root_data_dir):
     first_time = True
     #go through all label.txt
     boundry_have_anomaly=False
+    event_count = 1
     for i in range(len(label_path_list)):
         print("{} {}".format(i,label_path_list[i]))
         #go through label.txt content
@@ -79,7 +86,10 @@ def Parsing_Result_Imgs_Labels(root_data_dir):
                         im = "0_" + str(i) + ".jpg"
                         #2023-03-27 image file name adding timestamp
                         #new_im = str(i) + ".jpg"
-                        new_im = str(i)+" "+ timestamp_str + ".jpg"
+                        #new_im = str(i)+" "+ timestamp_str + ".jpg"
+                        #modified 2023-03-28
+                        new_im = str(i) + " Anomaly_Event_" + str(event_count) + ".jpg"
+                        event_count+=1
                         
                         path_dir = os.path.join(root_data_dir,"0_imgs")
                         im_path = os.path.join(path_dir,im)

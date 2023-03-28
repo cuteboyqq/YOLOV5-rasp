@@ -66,7 +66,8 @@ def Generate_Short_Clips(root_data_dir=r"/home/ali/GitHub_Code/cuteboyqq/YOLO/YO
     if not os.path.exists(save_ano_clip_dir):
         os.makedirs(save_ano_clip_dir)
                     
-    anomaly_video = str(left_boundary_frame) + "_" + str(right_boundary_frame) + "_" + str(frame_count) + "_" + timestamp_str + ".avi"
+    #anomaly_video = str(left_boundary_frame) + "_" + str(right_boundary_frame) + "_" + str(frame_count) + "_" + timestamp_str + ".avi"
+    anomaly_video = timestamp_str + ".avi"
     #anomaly_video = str(left_boundary_frame) + "_" + str(frame_count) + ".avi"
     save_ano_clips_path = os.path.join(save_ano_clip_dir,anomaly_video)
     print(save_ano_clips_path)

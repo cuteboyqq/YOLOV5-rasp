@@ -430,8 +430,8 @@ class MainWindow(QMainWindow):
     
     def run_command(self):
         now = datetime.now()
-        s_time = datetime.strftime(now,'%y-%m-%d_%H-%M-%S')
-        str_s_time = "20"+str(s_time)
+        s_time = datetime.strftime(now,'%y-%m-%d_%H:%M:%S')
+        str_s_time = str(s_time)
         source_type = self.source_combo.currentText()
         view_img = "--view-img" if self.viewimg_checkbox.isChecked() else ""
         save_airesult = "--save-airesult" if self.saveairesult_checkbox.isChecked() else ""
@@ -439,8 +439,8 @@ class MainWindow(QMainWindow):
         weights = "--weights runs/train/f192-4cls-Argos-2023-03-20/weights/best.pt"
         img_size = "--img-size 192"
         data = "--data data/factory_new2.yaml"
-        #save_folder_name = "--name "+str_s_time
-        save_folder_name = ""
+        save_folder_name = "--name "+str_s_time
+        #save_folder_name = ""
         #video_path = "/home/ali/factory_video/ori_video_ver2.mp4"
         detect_file = "detect-ori-log.py"
         if source_type == "Camera":

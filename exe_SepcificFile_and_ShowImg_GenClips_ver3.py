@@ -64,7 +64,7 @@ class ImageComboBox(QMainWindow):
         
         #===========QLabel=====================================
         self.source_label = QLabel(self)
-        self.source_label.setText("Step 2: Select Directory Of Saving Clips (Using Default Directory if Not Select)")
+        self.source_label.setText("Step 2: Select Directory Of Saving Clips")
         self.source_label.setFont(QFont("Times New Roman", FONT_SIZE))  # set the font size
         self.source_label.setGeometry(25, 250, 350, 30)
         self.layout.addWidget(self.source_label)
@@ -146,19 +146,32 @@ class ImageComboBox(QMainWindow):
         #==================image_label========================================================
         if SHOW_LABELS:
             self.image_label = QLabel()
-            self.image_label.setText("Step 4: Select/View Anoamly Image:")
+            self.image_label.setText("Step 4: Select/View Anoamly Event:")
             self.image_label.setFont(QFont(FONT, FONT_SIZE))  # set the font size
             #self.directory_label.setGeometry(10+shift_right, 0, 200, 60)
             self.layout.addWidget(self.image_label)
-        
+            
+            
         #=====================image_combo_box=========================================================================
         self.image_combo_box = QComboBox()
         self.image_combo_box.setFont(QFont(FONT, FONT_SIZE))  # set the font size
         self.image_combo_box.currentIndexChanged.connect(self.selected_image_changed)
-
+        
+        self.selected_directory = self.comboBox.currentText()
+        self.image_combo_box.clear()
+        #if not os.path.exists(os.path.join(self.selected_directory, 'anomaly_img_offline')):
+            #os.makedirs(os.path.join(self.selected_directory, 'anomaly_img_offline'))
+            
+        #self.image_combo_box.addItems(self.get_image_files(os.path.join(FOLDER_PATH,self.selected_directory, 'anomaly_img_offline')))
+        #self.image_combo_box.addItems(self.get_image_files(os.path.join(FOLDER_PATH,self.selected_directory, 'anomaly_img_offline')))
+        
+        
         self.layout.addWidget(self.image_combo_box)
         
-        
+        # Populate the QComboBox with folder names
+        #folder_path = FOLDER_PATH
+        #folder_names = [f for f in os.listdir(os.path.join(folder_path,)) if os.path.isfile(os.path.join(folder_path, f))]
+        #self.image_combo_box.addItems(folder_names)
         #===========QLabel=====================================
         self.source_label = QLabel(self)
         self.source_label.setText("Step 5: Short Anomaly Clips")
@@ -198,7 +211,8 @@ class ImageComboBox(QMainWindow):
         self.layout.addWidget(self.image_label)
         # Set up layout
         #layout = QVBoxLayout(self)
-      
+        self.load_file_list = []
+        
     
         #self.setLayout(layout)
     #================Alister 2023-03-28=====================================================
@@ -258,7 +272,9 @@ class ImageComboBox(QMainWindow):
         # Execute the command using subprocess
         #command = ["python", "log_parser_ver2.py", "--log-dir", folder_path, '--video-path', video_path]
         
-        
+        if not self.btn_select_dir.selected_dir:
+           QMessageBox.warning(self, "Warning", "Please Select a save clip directory !!.")
+           return
         
         if not os.path.exists(os.path.join(folder_path,"0.avi")) or not os.path.exists(os.path.join(folder_path,"log.txt")):
             QMessageBox.warning(self, "Error", "Need log.txt and 0.avi")
@@ -327,6 +343,7 @@ class ImageComboBox(QMainWindow):
         #if not os.path.exists(os.path.join(self.selected_directory, 'anomaly_img_offline')):
             #os.makedirs(os.path.join(self.selected_directory, 'anomaly_img_offline'))
             
+        #self.image_combo_box.addItems(self.get_image_files(os.path.join(FOLDER_PATH,self.selected_directory, 'anomaly_img_offline')))
         self.image_combo_box.addItems(self.get_image_files(os.path.join(FOLDER_PATH,self.selected_directory, 'anomaly_img_offline')))
         #2023-03-22 modified use  custom directory
         self.anomaly_clips_offline = os.path.join(FOLDER_PATH,self.selected_directory, 'anomaly_clips')
@@ -381,7 +398,14 @@ class ImageComboBox(QMainWindow):
                     
                     if frame_count_ori==frame_count_str:
                         match_file = file
-                        image_files[i] = os.path.join(directory, match_file)
+                        #image_files[i] = os.path.join(directory, match_file)
+                        image_files[i] = match_file
+                        
+        self.load_file_list.clear()           
+        for i, image_file in enumerate(image_files):
+            self.load_file_list.append(image_file)
+            image_files[i] = image_files[i].split()[1].split('.jpg')[0]
+
         return image_files
     '''
     def selected_directory_changed_part2(self, index):
@@ -477,7 +501,11 @@ class ImageComboBox(QMainWindow):
         self.player_process = subprocess.Popen(args)
     #=====================================================================
     def selected_image_changed(self, index):
-        selected_image = self.image_combo_box.currentText()
+        #selected_image = self.image_combo_box.currentText()
+        selected_image = self.load_file_list[self.image_combo_box.currentIndex()]; #TODO:
+        folder_name = self.comboBox.currentText()
+        #Alister 2023-03-28
+        selected_image = os.path.join("runs","detect",folder_name,"anomaly_img_offline",selected_image)
         pixmap = QPixmap(selected_image)
         self.image_label.setPixmap(pixmap)
 
@@ -490,9 +518,9 @@ class ImageComboBox(QMainWindow):
             result = message_box.exec_()
             if result == QMessageBox.Yes:
                 if not self.btn_select_dir.selected_dir=='':
-                    command = ['python', 'gen_shortclips_ver2.py', '--anomaly-img', selected_image, '--root-datadir', os.path.join(FOLDER_PATH,self.selected_directory), '--save-anoclipdir', self.btn_select_dir.selected_dir]
+                    command = ['python', 'gen_shortclips_ver2.py', '--anomaly-img', os.path.join("runs","detect",folder_name,"anomaly_img_offline",selected_image), '--root-datadir', os.path.join(FOLDER_PATH,self.selected_directory), '--save-anoclipdir', self.btn_select_dir.selected_dir]
                 else:
-                    command = ['python', 'gen_shortclips_ver2.py', '--anomaly-img', selected_image, '--root-datadir', os.path.join(FOLDER_PATH,self.selected_directory), '--save-anoclipdir', self.anomaly_clips_offline]
+                    command = ['python', 'gen_shortclips_ver2.py', '--anomaly-img', os.path.join("runs","detect",folder_name,"anomaly_img_offline",selected_image), '--root-datadir', os.path.join(FOLDER_PATH,self.selected_directory), '--save-anoclipdir', self.anomaly_clips_offline]
                 subprocess.run(command)
                 # populate the QComboBox with a list of video files found in the directory
                 self.smallclip_combo_box.clear()
