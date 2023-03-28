@@ -168,9 +168,9 @@ class ProgressBar(QWidget):
         vidcap = cv2.VideoCapture(self.video_path)
         print("video_path:{}".format(self.video_path))
         #====================================================
-        self.output.setText("Start calculate number of frames...")
-        self.output.show()
-        frame_count = 2
+        #self.output.setText("Start calculate number of frames...")
+        #self.output.show()
+        frame_count = 0
         success,image = vidcap.read()
         while True:
             if success:
@@ -184,17 +184,19 @@ class ProgressBar(QWidget):
                 image_od_result = image.copy()
             #print('Read a new frame: ', success)
         vidcap.release()
-        self.output.setText("Start calculate number of complete...")
+        #self.output.setText("Start calculate number of complete...")
         #====================================================
         vidcap = cv2.VideoCapture(self.video_path)
         #self.frame_count = vidcap.get(cv2.CAP_PROP_FRAME_COUNT)
         #self.frame_count = int(vidcap.get(cv2.CAP_PROP_POS_FRAMES))
         print("frame_count:{}".format(frame_count))
         #input()
-        self.pbar.setRange(0,frame_count)    # 進度條範圍
+        #self.pbar.setRange(0,frame_count+1)    # 進度條範圍
+        self.pbar.setMaximum(frame_count)
         success,image = vidcap.read()
         image_od_result = image.copy()
         count = 0
+        anomaly_count = 0
         file,filename,file_dir = self.Analysis_path(self.video_path)
         print(file," ",filename," ",file_dir)
         save_folder_name =  filename + "_imgs"
@@ -256,7 +258,7 @@ class ProgressBar(QWidget):
                                 print("label_str = {}".format(label_str))
                                 print("xyxy_str = {}".format(xyxy_str))
                                 print("conf_str = {}".format(conf_str))
-                                self.output.setText("file_txt = {}\n label_str = {} \n xyxy_str = {}\n conf_str = {}\n timestamp_str = {}\n save frame {}".format(txt_path,label_str,xyxy_str,conf_str,timestamp_str,count))
+                                #self.output.setText("file_txt = {}\n label_str = {} \n xyxy_str = {}\n conf_str = {}\n timestamp_str = {}\n save frame {}".format(txt_path,label_str,xyxy_str,conf_str,timestamp_str,count))
                                 #Not implemented
                                 #save_airesult=True
                                 hide_labels = False
@@ -270,7 +272,16 @@ class ProgressBar(QWidget):
                                     #if c==0 and filter_line_label==False: #noline (test)
                                     if c==0: #noline (test)
                                         if conf_f<0.70:
+                                            anomaly_count+=1
                                             annotator.box_label(xyxy, label+" anomaly" , color=(255,0,128))
+                                            self.output.setText("Anomaly Frame Log : \n file_txt = {}\n label_str = {} \n xyxy_str = {}\n conf_str = {}\n timestamp_str = {}\n anomaly_count:{}\n save frame:{}".format(txt_path,
+                                                                                                                                                                                                                        label_str,
+                                                                                                                                                                                                                        xyxy_str,
+                                                                                                                                                                                                                        conf_str,
+                                                                                                                                                                                                                        timestamp_str,
+                                                                                                                                                                                                                        anomaly_count,
+                                                                                                                                                                                                                        count))
+                                            self.output.show()
                                         else:
                                             annotator.box_label(xyxy, label+" normal" , color=(255,0,0))
                                     elif not c==0:
@@ -318,7 +329,7 @@ class ProgressBar(QWidget):
                     print('save frame ',count)
                     # setting value to progress bar
                     
-                    self.pbar.setValue(count)
+                    self.pbar.setValue(count+1)
                     #print("progress: {} %".format(count))
             else:
                 print('Video capture failed, break')
