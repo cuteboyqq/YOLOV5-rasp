@@ -82,26 +82,45 @@ class ProgressBar(QWidget):
 	# method for creating widgets
     def initUI(self):
         
-		# creating progress bar
+		
+        #self.video_extract_frame()
+        
+        # create label widget with message
+        #self.message = "let start parsing !"
+        #self.label = QLabel(self.message, self)
+        
+        # create central widget
+        #central_widget = QWidget(self)
+        
+        # create vertical layout for central widget
+        #layout = QVBoxLayout(central_widget)
+        
+        # create text edit widget for output
+        self.output = QTextEdit(self)
+        self.output.setGeometry(15, 10, 300, 200)
+        #layout.addWidget(self.output)
+        
+        # creating progress bar
         self.pbar = QProgressBar(self)
         
 		# setting its geometry
-        self.pbar.setGeometry(30, 40, 200, 25)
+        self.pbar.setGeometry(15, 250, 200, 25)
 
 		# creating push button
         self.btn = QPushButton('Start', self)
 
 		# changing its position
-        self.btn.move(40, 80)
+        self.btn.move(15, 220)
 
 		# adding action to push button
         self.btn.clicked.connect(self.video_extract_frame)
-        #self.video_extract_frame()
+        
+        
 		# setting window geometry
-        self.setGeometry(300, 300, 280, 170)
+        self.setGeometry(300, 300, 350, 300)
 
 		# setting window action
-        self.setWindowTitle("Python")
+        self.setWindowTitle("Parsing log.txt")
 
 		# showing all the widgets
         self.show()
@@ -148,10 +167,31 @@ class ProgressBar(QWidget):
         
         vidcap = cv2.VideoCapture(self.video_path)
         print("video_path:{}".format(self.video_path))
+        #====================================================
+        self.output.setText("Start calculate number of frames...")
+        self.output.show()
+        frame_count = 2
+        success,image = vidcap.read()
+        while True:
+            if success:
+                frame_count += 1
+                
+            else:
+                
+                break
+            success,image = vidcap.read()
+            if success:
+                image_od_result = image.copy()
+            #print('Read a new frame: ', success)
+        vidcap.release()
+        self.output.setText("Start calculate number of complete...")
+        #====================================================
+        vidcap = cv2.VideoCapture(self.video_path)
+        #self.frame_count = vidcap.get(cv2.CAP_PROP_FRAME_COUNT)
         #self.frame_count = int(vidcap.get(cv2.CAP_PROP_POS_FRAMES))
-        #print("frame_count:{}".format(self.frame_count))
+        print("frame_count:{}".format(frame_count))
         #input()
-        self.pbar.setRange(0, 5000)    # 進度條範圍
+        self.pbar.setRange(0,frame_count)    # 進度條範圍
         success,image = vidcap.read()
         image_od_result = image.copy()
         count = 0
@@ -207,14 +247,16 @@ class ProgressBar(QWidget):
                                 xyxy = line.split(" ")[1:5]
                                 label = line.split(" ")[0]
                                 conf = line.split(" ")[5]
+                                timestamp = line.split(" ")[6:]
                                 conf_f = float(conf)
                                 xyxy_str = ' '.join(x for x in xyxy)
                                 label_str = ' '.join(x for x in label)
                                 conf_str = ' '.join(x for x in conf)
+                                timestamp_str = ' '.join(x for x in timestamp)
                                 print("label_str = {}".format(label_str))
                                 print("xyxy_str = {}".format(xyxy_str))
                                 print("conf_str = {}".format(conf_str))
-                                
+                                self.output.setText("file_txt = {}\n label_str = {} \n xyxy_str = {}\n conf_str = {}\n timestamp_str = {}\n save frame {}".format(txt_path,label_str,xyxy_str,conf_str,timestamp_str,count))
                                 #Not implemented
                                 #save_airesult=True
                                 hide_labels = False
@@ -275,6 +317,7 @@ class ProgressBar(QWidget):
                     #cv2.imwrite("/home/ali/datasets-old/TL4/frame%d.jpg" % count, image)     # save frame as JPEG file    
                     print('save frame ',count)
                     # setting value to progress bar
+                    
                     self.pbar.setValue(count)
                     #print("progress: {} %".format(count))
             else:
@@ -285,6 +328,7 @@ class ProgressBar(QWidget):
                 image_od_result = image.copy()
             #print('Read a new frame: ', success)
             count += 1
+            #self.message = str(count)
             
 def get_args():
     import argparse

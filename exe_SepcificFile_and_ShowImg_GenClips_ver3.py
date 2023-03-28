@@ -13,7 +13,7 @@ import subprocess
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 from PyQt5.QtCore import QUrl, QProcess, QIODevice, pyqtSlot, pyqtSignal
-from PyQt5.QtWidgets import QApplication, QMainWindow, QComboBox, QWidget, QVBoxLayout, QCheckBox, QMessageBox, QLabel, QPushButton, QFileDialog, QProgressBar
+from PyQt5.QtWidgets import QApplication, QMainWindow, QComboBox, QWidget, QVBoxLayout, QCheckBox, QMessageBox, QLabel, QPushButton, QFileDialog, QProgressBar, QHBoxLayout
 from PyQt5.QtMultimediaWidgets import QVideoWidget
 
 shift_right = 10
@@ -35,15 +35,57 @@ class ImageComboBox(QMainWindow):
         self.setCentralWidget(self.central_widget)
         self.layout = QVBoxLayout(self.central_widget)
         #self.layout = QVBoxLayout()
-        #=========================================================================================
+        #===========QLabel=====================================
+        self.source_label = QLabel(self)
+        self.source_label.setText("Step 1: AI Result:")
+        self.source_label.setFont(QFont("Times New Roman", FONT_SIZE))  # set the font size
+        self.source_label.setGeometry(25, 250, 350, 30)
+        self.layout.addWidget(self.source_label)
+        
+        #=================2023-03-28======QCheckBox==================================================================
+        self.disable_checkbox = QCheckBox('Disable', self)
+        self.disable_checkbox.setFont(QFont("Times New Roman", FONT_SIZE))  # set the font size
+        self.enable_checkbox = QCheckBox('Enable', self)
+        self.enable_checkbox.setFont(QFont("Times New Roman", FONT_SIZE))  # set the font size
+        self.enable_checkbox.setChecked(True)
+        self.enable_checkbox.setGeometry(50, 50, 30, 30)
+        
+        #layout = QHBoxLayout()
+        #layout.addWidget(self.enable_checkbox)
+        #layout.addWidget(self.disable_checkbox)
+        #self.setLayout(layout)
+        self.layout.addWidget(self.enable_checkbox)
+        self.layout.addWidget(self.disable_checkbox)
+        # Connect the stateChanged signals of the two checkboxes to the appropriate slots
+        self.enable_checkbox.stateChanged.connect(self.on_enable_checkbox_changed)
+        self.disable_checkbox.stateChanged.connect(self.on_disable_checkbox_changed)
+        
+        self.enable_checkbox.stateChanged.connect(self.generate_short_clips_changed)
+        
+        #===========QLabel=====================================
+        self.source_label = QLabel(self)
+        self.source_label.setText("Step 2: Select Directory Of Saving Clips (Using Default Directory if Not Select)")
+        self.source_label.setFont(QFont("Times New Roman", FONT_SIZE))  # set the font size
+        self.source_label.setGeometry(25, 250, 350, 30)
+        self.layout.addWidget(self.source_label)
+        #==========================QPushButton===============================================================
+        self.btn_select_dir = QPushButton("Select Directory Button")
+        self.btn_select_dir.setFont(QFont(FONT, FONT_SIZE))  # set the font size
+        #self.btn_select_dir.setGeometry(50, 50, 200, 30)
+        self.btn_select_dir.clicked.connect(self.select_dir)
+        self.layout.addWidget(self.btn_select_dir)
+        self.btn_select_dir.selected_dir = ""
         #==================QCheckBox====================================================
+        '''
         self.check_box2 = QCheckBox('Step 1: Enable/Disable AI Result',self)
         self.check_box2.setFont(QFont(FONT, FONT_SIZE))  # set the font size
         self.check_box2.stateChanged.connect(self.generate_short_clips_changed)
         self.layout.addWidget(self.check_box2)
         #self.image_label = QLabel()
         #self.layout.addWidget(self.image_label)
+        '''
         #==============QProgressBar========================================================
+        '''
         self.progress_bar = QProgressBar(self)
         #self.progress_bar.setGeometry(30, 40, 200, 25)
 
@@ -56,16 +98,17 @@ class ImageComboBox(QMainWindow):
         self.process.readyReadStandardError.connect(self.on_ready_read_standard_error)
         self.process.finished.connect(self.on_finished)
         self.layout.addWidget(self.progress_bar)
-        #================================================
+        '''
+        #===========QLabel=====================================
         self.source_label = QLabel(self)
-        self.source_label.setText("Step 2: Select which Log.txt to parsing:")
+        self.source_label.setText("Step 3: Select which Log.txt to parsing (Get Anomaly Events):")
         self.source_label.setFont(QFont("Times New Roman", FONT_SIZE))  # set the font size
         self.source_label.setGeometry(25, 250, 350, 30)
         self.layout.addWidget(self.source_label)
         
         # Create a QComboBox widget
         self.comboBox = QComboBox(self)
-        self.comboBox.setFont(QFont("Times New Roman", 12))  # set the font size
+        self.comboBox.setFont(QFont("Times New Roman", FONT_SIZE))  # set the font size
         self.comboBox.setGeometry(350, 250, 300, 30)
         self.layout.addWidget(self.comboBox)
         
@@ -103,7 +146,7 @@ class ImageComboBox(QMainWindow):
         #==================image_label========================================================
         if SHOW_LABELS:
             self.image_label = QLabel()
-            self.image_label.setText("Step 3: Select/View Anoamly Image:")
+            self.image_label.setText("Step 4: Select/View Anoamly Image:")
             self.image_label.setFont(QFont(FONT, FONT_SIZE))  # set the font size
             #self.directory_label.setGeometry(10+shift_right, 0, 200, 60)
             self.layout.addWidget(self.image_label)
@@ -115,16 +158,17 @@ class ImageComboBox(QMainWindow):
 
         self.layout.addWidget(self.image_combo_box)
         
-        #==========================QPushButton===============================================================
-        self.btn_select_dir = QPushButton("Select Directory Of Saving Short Anomaly Clips")
-        self.btn_select_dir.setFont(QFont(FONT, FONT_SIZE))  # set the font size
-        #self.btn_select_dir.setGeometry(50, 50, 200, 30)
-        self.btn_select_dir.clicked.connect(self.select_dir)
-        self.layout.addWidget(self.btn_select_dir)
-        self.btn_select_dir.selected_dir = ""
+        
+        #===========QLabel=====================================
+        self.source_label = QLabel(self)
+        self.source_label.setText("Step 5: Short Anomaly Clips")
+        self.source_label.setFont(QFont("Times New Roman", FONT_SIZE))  # set the font size
+        self.source_label.setGeometry(25, 250, 350, 30)
+        self.layout.addWidget(self.source_label)
+        
         #=================QCheckBox============================================
     
-        self.check_box = QCheckBox('Step 4: Generate Short Anomaly Clips', self)
+        self.check_box = QCheckBox('Enable Generate', self)
         self.check_box.setFont(QFont(FONT, FONT_SIZE))  # set the font size
         self.check_box.stateChanged.connect(self.generate_short_clips_changed)
 
@@ -134,7 +178,7 @@ class ImageComboBox(QMainWindow):
         #==================smallclip_label========================================================
         if SHOW_LABELS:
             self.smallclip_label = QLabel()
-            self.smallclip_label.setText("Step 5: Select Anomaly Small Clips and Show It:")
+            self.smallclip_label.setText("Step 6: Select Anomaly Small Clips and Show It:")
             self.smallclip_label.setFont(QFont(FONT, FONT_SIZE))  # set the font size
             #self.directory_label.setGeometry(10+shift_right, 0, 200, 60)
             self.layout.addWidget(self.smallclip_label)
@@ -157,6 +201,21 @@ class ImageComboBox(QMainWindow):
       
     
         #self.setLayout(layout)
+    #================Alister 2023-03-28=====================================================
+    def on_enable_checkbox_changed(self, state):
+        if state == 2: # Checked
+            self.disable_checkbox.setChecked(False)
+            self.enable_checkbox.setChecked(True)
+        elif state == 0: # Checked
+            self.disable_checkbox.setChecked(True)
+            self.enable_checkbox.setChecked(False)
+    def on_disable_checkbox_changed(self, state):
+        if state == 2: # Checked
+            self.enable_checkbox.setChecked(False)
+            self.disable_checkbox.setChecked(True)
+        elif state == 0: # Checked
+            self.enable_checkbox.setChecked(True)
+            self.disable_checkbox.setChecked(False)
     #==============Alister 2023-03-27=======================================================
     def run_command(self):
         self.process.start("your_command_here")
@@ -210,7 +269,7 @@ class ImageComboBox(QMainWindow):
             else:
                 reply = QMessageBox.information(self, 'Integration', 'Start to generate ai result video',QMessageBox.Ok | QMessageBox.Close, QMessageBox.Close)
             if reply == QMessageBox.Ok:
-                if self.check_box2.isChecked():
+                if self.enable_checkbox.isChecked():
                     # Execute the command using subprocess
                     #command = ["python", "log_parser_ver2.py", "--log-dir", folder_path, "--video-path",video_path, "--save-airesult"]
                     command = ["python", "pbar3.py", "--log-dir", folder_path, "--video-path",video_path, "--save-airesult"]
@@ -218,7 +277,7 @@ class ImageComboBox(QMainWindow):
                     # Execute the command using subprocess
                     command = ["python", "pbar3.py", "--log-dir", folder_path, "--video-path",video_path]
                     #command = ["python", "log_parser_ver2.py", "--log-dir", folder_path, "--video-path",video_path]
-                #subprocess.run(command)
+                    #subprocess.run(command)
                 try:
                     process = subprocess.run(command, check=True)
                     #self.process.start(command)
@@ -237,6 +296,7 @@ class ImageComboBox(QMainWindow):
     #=============================================================================================    
         #========Alister add 2023-03-27======================
         self.selected_directory = self.comboBox.currentText()
+        '''
         if not os.path.exists(os.path.join(FOLDER_PATH,self.selected_directory,"anomaly_img_offline")):
             message_box = QMessageBox()
             message_box.setIcon(QMessageBox.Question)
@@ -250,13 +310,16 @@ class ImageComboBox(QMainWindow):
         else:
             message_box = QMessageBox()
             message_box.setIcon(QMessageBox.Question)
-            message_box.setText("Already collected, do you want to re-generate it?")
+            message_box.setText("Already have Anomaly Images, do you want to re-generate it?")
             message_box.setWindowTitle("Get Anomaly Images")
             message_box.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
             result = message_box.exec_()
             if result == QMessageBox.Yes:
                 command = ['python', 'get_anomaly_image_offline_ver2.py', '--root-datadir', os.path.join(FOLDER_PATH,self.selected_directory)]
                 subprocess.run(command)
+        '''
+        command = ['python', 'get_anomaly_image_offline_ver2.py', '--root-datadir', os.path.join(FOLDER_PATH,self.selected_directory)]
+        subprocess.run(command)
     #==================================================================================================
         #======Alister add 2023-03-27========================
         #self.selected_directory = self.directory_combo_box.currentText()
