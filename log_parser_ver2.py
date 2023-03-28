@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 """
 Created on Fri Mar 17 13:57:31 2023
-
 @author: ali
 """
 from utils.plots import Annotator, colors, save_one_box
@@ -226,6 +225,7 @@ def video_extract_frame(path,
             image_od_result = image.copy()
         #print('Read a new frame: ', success)
         count += 1
+
 
 def get_args():
     import argparse

@@ -12,8 +12,8 @@ import os
 import subprocess
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
-from PyQt5.QtCore import QUrl
-from PyQt5.QtWidgets import QApplication, QMainWindow, QComboBox, QWidget, QVBoxLayout, QCheckBox, QMessageBox, QLabel, QPushButton, QFileDialog
+from PyQt5.QtCore import QUrl, QProcess, QIODevice, pyqtSlot, pyqtSignal
+from PyQt5.QtWidgets import QApplication, QMainWindow, QComboBox, QWidget, QVBoxLayout, QCheckBox, QMessageBox, QLabel, QPushButton, QFileDialog, QProgressBar
 from PyQt5.QtMultimediaWidgets import QVideoWidget
 
 shift_right = 10
@@ -43,7 +43,19 @@ class ImageComboBox(QMainWindow):
         self.layout.addWidget(self.check_box2)
         #self.image_label = QLabel()
         #self.layout.addWidget(self.image_label)
-        #======================================================================
+        #==============QProgressBar========================================================
+        self.progress_bar = QProgressBar(self)
+        #self.progress_bar.setGeometry(30, 40, 200, 25)
+
+        #self.setCentralWidget(self.progress_bar)
+ 
+        self.process = QProcess(self)
+ 
+        # Connect signals
+        self.process.started.connect(self.on_started)
+        self.process.readyReadStandardError.connect(self.on_ready_read_standard_error)
+        self.process.finished.connect(self.on_finished)
+        self.layout.addWidget(self.progress_bar)
         #================================================
         self.source_label = QLabel(self)
         self.source_label.setText("Step 2: Select which Log.txt to parsing:")
@@ -145,7 +157,35 @@ class ImageComboBox(QMainWindow):
       
     
         #self.setLayout(layout)
-        
+    #==============Alister 2023-03-27=======================================================
+    def run_command(self):
+        self.process.start("your_command_here")
+
+    @pyqtSlot()
+    def on_started(self):
+        self.progress_bar.setValue(0)
+
+    @pyqtSlot()
+    def on_finished(self):
+        self.progress_bar.setValue(100)
+
+    @pyqtSlot()
+    def on_ready_read_standard_error(self):
+        data = self.process.readAllStandardError()
+        # Parse data to get progress percentage and update progress bar
+        percentage = self.parse_progress_percentage(data)
+        self.progress_bar.setValue(percentage)
+    def parse_progress_percentage(self, data):
+        # Replace this method with your own logic to parse progress percentage
+        # from the data received from the subprocess
+        # In this example, we assume that the percentage is in the format "progress: XX%"
+        data_str = str(data, "utf-8").strip()
+        if data_str.startswith("progress: "):
+            percentage_str = data_str.split("progress: ")[-1].split("%")[0]
+            percentage = int(percentage_str)
+            return percentage
+        else:
+            return None
     #===================Alister add 2023-03-23==============================================
     def onComboBoxActivated(self, folder_name):
         # Get the full path of the selected folder
@@ -172,13 +212,16 @@ class ImageComboBox(QMainWindow):
             if reply == QMessageBox.Ok:
                 if self.check_box2.isChecked():
                     # Execute the command using subprocess
-                    command = ["python", "log_parser_ver2.py", "--log-dir", folder_path, "--video-path",video_path, "--save-airesult"]
+                    #command = ["python", "log_parser_ver2.py", "--log-dir", folder_path, "--video-path",video_path, "--save-airesult"]
+                    command = ["python", "pbar3.py", "--log-dir", folder_path, "--video-path",video_path, "--save-airesult"]
                 else:
                     # Execute the command using subprocess
-                    command = ["python", "log_parser_ver2.py", "--log-dir", folder_path, "--video-path",video_path]
+                    command = ["python", "pbar3.py", "--log-dir", folder_path, "--video-path",video_path]
+                    #command = ["python", "log_parser_ver2.py", "--log-dir", folder_path, "--video-path",video_path]
                 #subprocess.run(command)
                 try:
                     process = subprocess.run(command, check=True)
+                    #self.process.start(command)
                     #process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                     #timer = QTimer(self)
                     #timer.timeout.connect(lambda: self.checkProcessStatus(process))
