@@ -68,6 +68,7 @@ get_frame_proc_queue = Queue()
 my_proc_queue = Queue()
 #================================================================================
 SAVE_AI_RESULT_STREAM=True
+USER_ENABLE_SAVE_ANOMALY_IMG_ONLINE=False
 USE_SEM4=True
 USE_SEM5=False
 USE_TIME=False
@@ -687,9 +688,14 @@ def Process_Prediction(pred=None,
                     label = None if hide_labels else (names[c] if hide_conf else f'{names[c]} {conf:.2f}')
                     #annotator.box_label(xyxy, label, color=colors(c, True))
                     #if c==0 and filter_line_label==False: #noline (test)
-                    if c==0: #noline (test)
+                    if c==0 and enable_filter_left_line==False and b[0]<SIZE_W/2.0: #noline (test)
                         if conf<0.70:
-                            annotator.box_label(xyxy, label+" anomaly" , color=(0,0,255))
+                            annotator.box_label(xyxy, label+" anomaly" , color=(255,0,128))
+                        else:
+                            annotator.box_label(xyxy, label+" normal" , color=(255,0,0))
+                    elif c==0 and enable_filter_right_line==False and b[0]>SIZE_W/2.0:
+                        if conf<0.70:
+                            annotator.box_label(xyxy, label+" anomaly" , color=(255,0,128))
                         else:
                             annotator.box_label(xyxy, label+" normal" , color=(255,0,0))
                     elif not c==0:
@@ -760,7 +766,7 @@ def Process_Prediction(pred=None,
                         #vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc('H', '2', '6', '4'), fps, (w, h),True)
                     vid_writer[i].write(im0)
                     
-        if save_anomaly_img:
+        if save_anomaly_img and USER_ENABLE_SAVE_ANOMALY_IMG_ONLINE:
             img_dir = os.path.dirname(save_path)
             img_name = s_time + '.jpg'
             folder_name = 'anomaly_img'

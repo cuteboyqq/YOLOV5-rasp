@@ -53,6 +53,7 @@ frame_count_global=1
 ENABLE_FILTER_LINE=True
 SIZE_W=1280
 OVER_DIST_TH = 200
+USER_ENABLE_SAVE_ANOMALY_IMG_ONLINE=False
 @smart_inference_mode()
 def run(
         weights=ROOT / 'yolov5s.pt',  # model path or triton URL
@@ -262,7 +263,7 @@ def run(
             annotator = Annotator(im0, line_width=line_thickness, example=str(names))
             #Alister 2023-03-20 add Save AI result Stream including  time label at each frame
             global frame_count_global 
-            annotator.time_label(frame_count=int(frame), txt_color=(0,255,128),w=1280.0,h=720.0,enable_frame=True)
+            s_time = annotator.time_label(frame_count=int(frame), txt_color=(0,0,255),w=1280.0,h=720.0,enable_frame=True)
             if len(det):
                 # Rescale boxes from img_size to im0 size
                 #det[:, :4] = scale_boxes(im.shape[2:], det[:, :4], im0.shape).round()
@@ -303,11 +304,11 @@ def run(
                         #frame_str = str(frame)
                         #Alister 2023-03-23 filterline criteria
                         if cl==0 and enable_filter_left_line==False and b[0]<SIZE_W/2.0:
-                            frame_label_list_global.append(f'{txt_path}.txt {la}')
+                            frame_label_list_global.append(f'{txt_path}.txt {la} {s_time}')
                         elif cl==0 and enable_filter_right_line==False and b[0]>SIZE_W/2.0:
-                            frame_label_list_global.append(f'{txt_path}.txt {la}')
+                            frame_label_list_global.append(f'{txt_path}.txt {la} {s_time}')
                         elif not cl==0:
-                            frame_label_list_global.append(f'{txt_path}.txt {la}')
+                            frame_label_list_global.append(f'{txt_path}.txt {la} {s_time}')
                             
                         nn = len(frame_label_list_global) if len(frame_label_list_global)<=10 else 10
                         nn_real = len(frame_label_list_global)
@@ -414,7 +415,7 @@ def run(
                             #save_path = str(Path(save_path).with_suffix('.mp4'))  # force *.mp4 suffix on results videos
                             #vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
                         vid_writer[i].write(im0)
-            if save_anomaly_img:
+            if save_anomaly_img and USER_ENABLE_SAVE_ANOMALY_IMG_ONLINE:
                 img_dir = os.path.dirname(save_path)
                 img_name = s_time + '.jpg'
                 folder_name = 'anomaly_img'
