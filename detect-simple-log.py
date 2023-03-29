@@ -174,7 +174,10 @@ def load_dataloader(source=0,
                     nosave=False,
                     imgsz=(192,192),
                     stride = 16,
-                    pt = ''
+                    pt = '',
+                    name ='exp',
+                    exist_ok=False,
+                    save_dir='exp'
                     ):
     
     source = str(source)
@@ -182,13 +185,19 @@ def load_dataloader(source=0,
     is_file = Path(source).suffix[1:] in (IMG_FORMATS + VID_FORMATS)
     is_url = source.lower().startswith(('rtsp://', 'rtmp://', 'http://', 'https://'))
     webcam = source.isnumeric() or source.endswith('.txt') or (is_url and not is_file)
+    project=ROOT / 'runs/detect'
+    # Directories
+    #save_dir = increment_path(Path(project) / name, exist_ok=exist_ok)  # increment run
+    #(save_dir).mkdir(parents=True, exist_ok=True)  # make dir
+    #print(save_dir)
+    #(save_dir / 'labels' if save_txt else save_dir).mkdir(parents=True, exist_ok=True)  # make dir
     if is_url and is_file:
         source = check_file(source)  # download
     
     if webcam:
         view_img = check_imshow()
         cudnn.benchmark = True  # set True to speed up constant image size inference
-        dataset = LoadStreams(source, img_size=imgsz, stride=stride, auto=pt)
+        dataset = LoadStreams(source, img_size=imgsz, stride=stride, auto=pt, save_dir=save_dir)
         bs = len(dataset)  # batch_size
     else:
         dataset = LoadImages(source, img_size=imgsz, stride=stride, auto=pt)
@@ -953,8 +962,31 @@ if __name__ == "__main__":
     hide_conf = opt.hide_conf
     source = opt.source
     save_ai_result = opt.save_airesult
-    
+    name = opt.name
+    exist_ok = opt.exist_ok
     save_img = not nosave and not source.endswith('.txt')  # save inference images
+    
+    #================================
+    name = opt.name
+    project = opt.project
+    exist_ok = opt.exist_ok
+    save_txt = opt.save_txt
+    visualize = opt.visualize
+    augment = opt.augment
+    conf_thres = opt.conf_thres
+    iou_thres = opt.iou_thres
+    classes = opt.classes
+    agnostic_nms = opt.agnostic_nms
+    max_det = opt.max_det
+    save_crop = opt.save_crop
+    line_thickness = opt.line_thickness
+    
+    
+    # Directories
+    save_dir = increment_path(Path(project) / name, exist_ok=exist_ok)  # increment run
+    (save_dir / 'labels' if save_txt else save_dir).mkdir(parents=True, exist_ok=True)  # make dir
+    
+    
     
     model, stride, pt, imgsz, device, names = load_model(weights=weights,  # model.pt path(s)
                                                    device='',
@@ -970,9 +1002,16 @@ if __name__ == "__main__":
                                     nosave=False,
                                     imgsz=imgsz,
                                     stride=stride,
-                                    pt=pt
+                                    pt=pt,
+                                    name=name,
+                                    exist_ok=exist_ok,
+                                    save_dir=save_dir
                                     )
     
+    bs = len(dataset)  # batch_size
+    vid_path, vid_writer = [None] * bs, [None] * bs
+    model.warmup(imgsz=(1 if pt else bs, 3, *imgsz))  # warmup
+    seen, windows, dt = 0, [], (Profile(), Profile(), Profile())
     # Block until all tasks are done.
     #my_queue.join()
     #================================
@@ -992,28 +1031,7 @@ if __name__ == "__main__":
     t.join()
     '''
     #https://stackoverflow.com/questions/31508574/semaphores-on-python
-    #================================
-    name = opt.name
-    project = opt.project
-    exist_ok = opt.exist_ok
-    save_txt = opt.save_txt
-    visualize = opt.visualize
-    augment = opt.augment
-    conf_thres = opt.conf_thres
-    iou_thres = opt.iou_thres
-    classes = opt.classes
-    agnostic_nms = opt.agnostic_nms
-    max_det = opt.max_det
-    save_crop = opt.save_crop
-    line_thickness = opt.line_thickness
     
-    bs = len(dataset)  # batch_size
-    vid_path, vid_writer = [None] * bs, [None] * bs
-    # Directories
-    save_dir = increment_path(Path(project) / name, exist_ok=exist_ok)  # increment run
-    (save_dir / 'labels' if save_txt else save_dir).mkdir(parents=True, exist_ok=True)  # make dir
-    model.warmup(imgsz=(1 if pt else bs, 3, *imgsz))  # warmup
-    seen, windows, dt = 0, [], (Profile(), Profile(), Profile())
     
         #==================================================================================================
     if MULTI_THREAD:
