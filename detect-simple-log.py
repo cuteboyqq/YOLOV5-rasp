@@ -214,7 +214,7 @@ def load_dataloader(source=0,
 
             
 
-def Get_Frame(dataset):
+def Get_Frame(dataset,vw):
     
     #global im_global
     #global path_global
@@ -237,7 +237,7 @@ def Get_Frame(dataset):
     global vid_cap_global
     dataset.__iter__()
     while True:
-        
+        global frame_cnt
         #for path, im, im0s, vid_cap, s in dataset:
         #if USE_SEM4:    
             #sem4.acquire() #sem4=0
@@ -248,6 +248,19 @@ def Get_Frame(dataset):
         
         data = dataset.__next__()
         path, im, im0s, vid_cap, s = data
+        
+        #==============================================
+        SAVE_RAW_STREAM=True
+        if SAVE_RAW_STREAM:
+            names="test_2023_03_03"
+            im0s[0] = np.ascontiguousarray(im0s[0])  # contiguous
+            annotator = Annotator(im0s[0], line_width=3, example=str(names))
+            if not SET_H is 720:
+                im0s[0] = im0s[0][..., ::-1]
+            annotator.time_label(frame_count=frame_cnt,txt_color=(0,0,255))
+            vw.write(im0s[0])
+        #==============================================
+        
         #print("[Get_Frame] im shape {} :".format(im.shape))
         im = torch.from_numpy(im).to(device)
         #print("[Get_Frame] im torch.from_numpy shape {} :".format(im.shape))
@@ -288,7 +301,7 @@ def Get_Frame(dataset):
         #print("1")
         
         
-        global frame_cnt
+        #global frame_cnt
         #==========Alister add 2023-03-02============
         if frame_cnt==1:
             #parameter_queue.put([s,vid_cap]) #Failed
@@ -987,6 +1000,21 @@ if __name__ == "__main__":
     (save_dir / 'labels' if save_txt else save_dir).mkdir(parents=True, exist_ok=True)  # make dir
     
     
+    #==Alsiter add 2023-03-30====================
+    #if SAVE_RAW_STREAM:
+    now = datetime.now()
+    s_time = datetime.strftime(now,'%y-%m-%d_%H-%M-%S')
+    s_time = str(s_time)
+    save_path = os.path.join(save_dir,"0.avi")
+    print(save_path)
+    SET_W=1280
+    SET_H=720
+    SET_FPS=20
+    w,h=SET_W,SET_H
+    fps=SET_FPS
+    vw = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'MJPG'), fps, (w, h))
+    #============================================
+    
     
     model, stride, pt, imgsz, device, names = load_model(weights=weights,  # model.pt path(s)
                                                    device='',
@@ -1045,7 +1073,7 @@ if __name__ == "__main__":
             #thread Get_Frame
             #=================
             print("before t1")
-            t1 = threading.Thread(target = Get_Frame ,args=(dataset, ))
+            t1 = threading.Thread(target = Get_Frame ,args=(dataset,vw,))
             with dt[0]:
                 t1.start()    
             print("after t1.start()")
