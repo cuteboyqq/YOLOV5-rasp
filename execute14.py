@@ -430,7 +430,7 @@ class MainWindow(QMainWindow):
     
     def run_command(self):
         now = datetime.now()
-        s_time = datetime.strftime(now,'%y-%m-%d_%H-%M-%S')
+        s_time = datetime.strftime(now,'%y-%m-%d_%H:%M:%S')
         str_s_time = str(s_time)
         source_type = self.source_combo.currentText()
         view_img = "--view-img" if self.viewimg_checkbox.isChecked() else ""
@@ -442,8 +442,8 @@ class MainWindow(QMainWindow):
         save_folder_name = "--name "+str_s_time
         #save_folder_name = ""
         #video_path = "/home/ali/factory_video/ori_video_ver2.mp4"
-        #detect_file = "detect-ori-log.py"
-        detect_file = "detect-simple-log.py"
+        detect_file = "detect-ori-log.py"
+        #detect_file = "detect-simple-log.py"
         if source_type == "Camera":
             command = f"python {detect_file} --source 0 {weights} {img_size} {data} {view_img} {save_folder_name} {save_airesult}"
         elif source_type == "Video":

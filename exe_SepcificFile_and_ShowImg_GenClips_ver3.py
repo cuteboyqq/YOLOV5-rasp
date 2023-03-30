@@ -15,7 +15,7 @@ from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 from PyQt5.QtCore import QUrl, QProcess, QIODevice, pyqtSlot, pyqtSignal
 from PyQt5.QtWidgets import QApplication, QMainWindow, QComboBox, QWidget, QVBoxLayout, QCheckBox, QMessageBox, QLabel, QPushButton, QFileDialog, QProgressBar, QHBoxLayout
 from PyQt5.QtMultimediaWidgets import QVideoWidget
-
+import shutil
 shift_right = 10
 FONT_SIZE = 14
 #FONT="Arial" # Times New Roman
@@ -202,6 +202,20 @@ class ImageComboBox(QMainWindow):
         self.smallclip_combo_box.currentIndexChanged.connect(self.play_selected_video)
         self.layout.addWidget(self.smallclip_combo_box)
         
+        
+        #==========================QPushButton for clean all detect folder datasets===============================================================
+        # create label
+        self.label = QLabel("Click the button to delete the folder", self)
+        #self.label.move(50, 50)
+        self.layout.addWidget(self.label)
+        
+        self.btn_delete = QPushButton("Delete All Result Folder")
+        self.btn_delete.setFont(QFont(FONT, FONT_SIZE))  # set the font size
+        #self.btn_select_dir.setGeometry(50, 50, 200, 30)
+        self.btn_delete.clicked.connect(self.show_dialog)
+        self.layout.addWidget(self.btn_delete)
+        #self.btn_delete.selected_dir = ""
+        
         # create the QMediaPlayer and QVideoWidget
         self.mediaPlayer = QMediaPlayer(self)
         self.videoWidget = QVideoWidget(self)
@@ -362,7 +376,30 @@ class ImageComboBox(QMainWindow):
             for filename in os.listdir(self.anomaly_clips_offline): #self.anomaly_clips_offline self.btn_select_dir.selected_dir
                 if filename.endswith(('.mp4', '.avi', '.mkv', '.mov')):
                     self.smallclip_combo_box.addItem(filename)
-        
+    
+    def show_dialog(self):
+        dialog = QMessageBox(self)
+        dialog.setWindowTitle("Delete Folder")
+        dialog.setIcon(QMessageBox.Warning)
+        dialog.setText("Are you sure you want to delete the folder?")
+        dialog.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
+        response = dialog.exec_()
+        if response == QMessageBox.Yes:
+            self.delete_dir()
+        else:
+            self.label.setText("Folder deletion cancelled")
+    
+    
+    def delete_dir(self):
+        folder_path = DATA_DIR  # replace with the path to the folder you want to delete
+        try:
+            shutil.rmtree(folder_path)
+            #os.rmdir(folder_path)  # remove folder
+            self.label.setText("Folder deleted successfully")
+        except OSError as e:
+            self.label.setText("Error: {} - {}".format(e.filename, e.strerror))
+            
+
     def select_dir(self):
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
@@ -505,7 +542,7 @@ class ImageComboBox(QMainWindow):
         selected_image = self.load_file_list[self.image_combo_box.currentIndex()]; #TODO:
         folder_name = self.comboBox.currentText()
         #Alister 2023-03-28
-        selected_image = os.path.join("runs","detect",folder_name,"anomaly_img_offline",selected_image)
+        selected_image = os.path.join(DATA_DIR,folder_name,"anomaly_img_offline",selected_image)
         pixmap = QPixmap(selected_image)
         self.image_label.setPixmap(pixmap)
 
