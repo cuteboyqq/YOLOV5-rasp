@@ -21,7 +21,7 @@ FONT_SIZE = 14
 #FONT="Arial" # Times New Roman
 FONT= "Times New Roman"
 SHOW_LABELS=True
-DATA_DIR=r"/home/ali/GitHub_Code/cuteboyqq/YOLO/YOLOV5-rasp/runs/detect"
+DATA_DIR=r"/home/ali/Desktop/YOLOV5-rasp/runs/detect"
 if not os.path.exists(DATA_DIR):
     os.makedirs(DATA_DIR)
 FOLDER_PATH=DATA_DIR

@@ -246,9 +246,10 @@ def Get_Frame(dataset,vw):
         get_frame_time = time.time()
         
         data = dataset.__next__()
-        path, im, im0s, vid_cap, s = data
+        path, im, im0s, vid_cap, s, fr_count= data
         
         #==============================================
+        
         SAVE_RAW_STREAM=True
         if SAVE_RAW_STREAM:
             names="test_2023_03_03"
@@ -258,6 +259,7 @@ def Get_Frame(dataset,vw):
                 im0s[0] = im0s[0][..., ::-1]
             annotator.time_label(frame_count=frame_cnt,txt_color=(0,0,255))
             vw.write(im0s[0])
+        
         #==============================================
         
         #print("[Get_Frame] im shape {} :".format(im.shape))
@@ -287,7 +289,7 @@ def Get_Frame(dataset,vw):
         #======================
         #get_frame_sem.acquire()
         #======================
-        get_frame_queue.put([im,path,im0s,s,vid_cap])#Root Cause : Here cost a lot of time 2023-03-02
+        get_frame_queue.put([im,path,im0s,s,vid_cap,fr_count])#Root Cause : Here cost a lot of time 2023-03-02
         #get_frame_queue.put([im,path,im0s])#Root Cause : Here cost a lot of time 2023-03-02
         #print("start get_frame_sem.release()")
         #=======================
@@ -366,7 +368,7 @@ def model_inference(model,visualize,save_dir,path,augment):
             
         print("[after get] get_frame_queue.qsize() = {}".format(get_frame_queue.qsize()))
     
-        im_queue,path_queue,im0s_queue,s_queue,vid_cap_queue = get_frame_data_from_queue
+        im_queue,path_queue,im0s_queue,s_queue,vid_cap_queue, fr_count_queue = get_frame_data_from_queue
         #print("start get_frame_sem.release()")
         #======================
         #get_frame_sem.release()
@@ -402,7 +404,7 @@ def model_inference(model,visualize,save_dir,path,augment):
         
         mi_qput_start_time = time.time()
         #model_inference_sem.acquire()
-        my_queue.put([im_queue,path_queue,s_queue,vid_cap_queue,pred,im0s_queue])
+        my_queue.put([im_queue,path_queue,s_queue,vid_cap_queue,pred,im0s_queue,fr_count_queue])
         #my_queue.put([im_queue,path_queue,pred,im0s_queue])
         #print("[model_inference]pred_global = {}".format(pred_global))
         #return pre2
@@ -459,11 +461,12 @@ def Process_Prediction(pred=None,
                        vid_cap=None,
                        vid_path=None,
                        vid_writer=None,
-                       save_ai_result=False):
+                       save_ai_result=False,
+                       fr_count_queue = 9999):
     def Analysis_path(path):
         #parsing format runs/detect/filename/labels/0_num.txt
         path_dir = path.split("/")[0:-1]
-        path_dir_str = ' '.join(x for x in path_dir)
+        path_dir_str = '/'.join(x for x in path_dir)
         file = path.split("/")[-1]
         file_name = file.split(".")[0]
         source_name = file_name.split("_")[0]
@@ -471,8 +474,15 @@ def Process_Prediction(pred=None,
     
     def Analysis_log(time_log):
         #log format : label x y x y conf timestamp fr:num
-        frame_str = time_log.split(" ")[-1].split(":")[1]
-        return frame_str
+        print("time_log : {}".format(time_log))
+        frame_log = time_log.split(" ")[-1]
+        print("frame_log:{}".format(frame_log))
+        if len(time_log.split(" ")[-1].split(":"))>1:
+            frame_str = time_log.split(" ")[-1].split(":")[1]
+        else:
+            frame_str = "error"
+        print("frame_str:{}".format(frame_str))
+        return frame_str,frame_log
     #global vid_cap_global
     save_anomaly_img = False
     global frame_count_global
@@ -601,7 +611,7 @@ def Process_Prediction(pred=None,
         gn = torch.tensor(im0.shape)[[1, 0, 1, 0]]  # normalization gain whwh
         imc = im0.copy() if save_crop else im0  # for save_crop
         annotator = Annotator(im0, line_width=line_thickness, example=str(names))
-        s_time = annotator.time_label(frame_count=int(frame), txt_color=(0,0,255),w=1280.0,h=720.0,enable_frame=True)
+        s_time = annotator.time_label(frame_count=int(fr_count_queue), txt_color=(0,0,255),w=1280.0,h=720.0,enable_frame=True)
         if len(det):
             # Rescale boxes from img_size to im0 size
             #det[:, :4] = scale_coords(im.shape[2:], det[:, :4], im0.shape).round()
@@ -657,7 +667,9 @@ def Process_Prediction(pred=None,
                 
                 #===Alister 2023-03-31=======================
                 txt_dir,source_name = Analysis_path(txt_path)
-                s_time_frame = Analysis_log(s_time)
+                s_time_frame, frame_log = Analysis_log(s_time)
+                
+                print("frame_log:{} \n s_time_frame:{}".format(frame_log,s_time_frame))
                 
                 new_txt = source_name + "_" + s_time_frame + ".txt" 
                 new_txt_path = os.path.join(txt_dir,new_txt)
@@ -687,12 +699,13 @@ def Process_Prediction(pred=None,
                     #frame_label_list_global.append([f'{txt_path}.txt',('%g ' * len(line)).rstrip() % line ])
                     #frame_str = str(frame)
                     #Alister 2023-03-23 filterline criteria
-                    if cl==0 and enable_filter_left_line==False and b[0]<SIZE_W/2.0:
-                        frame_label_list_global.append(f'{new_txt_path}.txt {la} {s_time}')
-                    elif cl==0 and enable_filter_right_line==False and b[0]>SIZE_W/2.0:
-                        frame_label_list_global.append(f'{new_txt_path}.txt {la} {s_time}')
-                    elif not cl==0:
-                        frame_label_list_global.append(f'{new_txt_path}.txt {la} {s_time}')
+                    if not s_time_frame=="error":
+                        if cl==0 and enable_filter_left_line==False and b[0]<SIZE_W/2.0:
+                            frame_label_list_global.append(f'{new_txt_path} {la} {s_time}')
+                        elif cl==0 and enable_filter_right_line==False and b[0]>SIZE_W/2.0:
+                            frame_label_list_global.append(f'{new_txt_path} {la} {s_time}')
+                        elif not cl==0:
+                            frame_label_list_global.append(f'{new_txt_path} {la} {s_time}')
                         
                     nn = len(frame_label_list_global) if len(frame_label_list_global)<=10 else 10
                     nn_real = len(frame_label_list_global)
@@ -712,7 +725,7 @@ def Process_Prediction(pred=None,
                             #f.writelines(frame_label_list_global) #l am not sure if this code is right~~~
                 #=======================Alister add 2023-03-16===================
                 
-                
+                frame_count_global
                 
                 #Alister add 2023-02-21    save anomaly images    
                 c = int(cls)  # integer class
@@ -720,7 +733,7 @@ def Process_Prediction(pred=None,
                 if c==0 and conf<0.70: #test c==1 
                     save_anomaly_img = True
                     now = datetime.now()
-                    s_time = datetime.strftime(now,'%y-%m-%d-%H-%M-%S')
+                    s_time = datetime.strftime(now,'%y-%m-%d_%H-%M-%S')
                     #anomaly_img_count+=1
                     
                 if save_img or save_crop or view_img:  # Add bbox to image
@@ -880,7 +893,7 @@ def PostProcess(
         #else:
         q_data=my_queue.get()
         print("[after get] my_queue.qsize() = {}".format(my_queue.qsize()))
-        im_from_queue,path_from_queue,s_from_queue,vid_cap_from_queue,pred_from_queue,im0s_from_queue = q_data
+        im_from_queue,path_from_queue,s_from_queue,vid_cap_from_queue,pred_from_queue,im0s_from_queue,fr_count_from_queue = q_data
         #im_from_queue,path_from_queue,pred_from_queue,im0s_from_queue = q_data
         #model_inference_sem.release()
         #Alister add 2023-03-02 #Failed
@@ -930,7 +943,8 @@ def PostProcess(
                             vid_cap=vid_cap_from_queue,
                             vid_path=vid_path,
                             vid_writer=vid_writer,
-                            save_ai_result=save_ai_result)
+                            save_ai_result=save_ai_result,
+                            fr_count_queue=fr_count_from_queue)
         #print("[PostProcess] after Process_Prediction")
         #print("3")
         #===============================================================================================================================
