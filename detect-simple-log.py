@@ -215,7 +215,6 @@ def load_dataloader(source=0,
             
 
 def Get_Frame(dataset,vw):
-    
     #global im_global
     #global path_global
     #global im0s_global
@@ -461,8 +460,19 @@ def Process_Prediction(pred=None,
                        vid_path=None,
                        vid_writer=None,
                        save_ai_result=False):
+    def Analysis_path(path):
+        #parsing format runs/detect/filename/labels/0_num.txt
+        path_dir = path.split("/")[0:-1]
+        path_dir_str = ' '.join(x for x in path_dir)
+        file = path.split("/")[-1]
+        file_name = file.split(".")[0]
+        source_name = file_name.split("_")[0]
+        return path_dir_str,source_name
     
-    
+    def Analysis_log(time_log):
+        #log format : label x y x y conf timestamp fr:num
+        frame_str = time_log.split(" ")[-1].split(":")[1]
+        return frame_str
     #global vid_cap_global
     save_anomaly_img = False
     global frame_count_global
@@ -644,6 +654,14 @@ def Process_Prediction(pred=None,
             #annotator.time_label(frame_count=fr_cnt,txt_color=(128,256,0))
             # Write results
             for *xyxy, conf, cls in reversed(det):
+                
+                #===Alister 2023-03-31=======================
+                txt_dir,source_name = Analysis_path(txt_path)
+                s_time_frame = Analysis_log(s_time)
+                
+                new_txt = source_name + "_" + s_time_frame + ".txt" 
+                new_txt_path = os.path.join(txt_dir,new_txt)
+                #============================================
                 if save_txt:  # Write to file
                     xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
                     line = (cls, *xywh, conf) if save_conf else (cls, *xywh)  # label format
@@ -670,11 +688,11 @@ def Process_Prediction(pred=None,
                     #frame_str = str(frame)
                     #Alister 2023-03-23 filterline criteria
                     if cl==0 and enable_filter_left_line==False and b[0]<SIZE_W/2.0:
-                        frame_label_list_global.append(f'{txt_path}.txt {la} {s_time}')
+                        frame_label_list_global.append(f'{new_txt_path}.txt {la} {s_time}')
                     elif cl==0 and enable_filter_right_line==False and b[0]>SIZE_W/2.0:
-                        frame_label_list_global.append(f'{txt_path}.txt {la} {s_time}')
+                        frame_label_list_global.append(f'{new_txt_path}.txt {la} {s_time}')
                     elif not cl==0:
-                        frame_label_list_global.append(f'{txt_path}.txt {la} {s_time}')
+                        frame_label_list_global.append(f'{new_txt_path}.txt {la} {s_time}')
                         
                     nn = len(frame_label_list_global) if len(frame_label_list_global)<=10 else 10
                     nn_real = len(frame_label_list_global)
