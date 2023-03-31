@@ -314,7 +314,7 @@ class LoadImages:
                 annotator = Annotator(im0, line_width=3, example=str(names))
                 #if not SET_H is 720:
                     #im0 = im0[..., ::-1]
-                annotator.time_label(frame_count=self.count,txt_color=(0,255,128))
+                #annotator.time_label(frame_count=self.count,txt_color=(255,0,0))
                 self.vw.write(im0)
             #==============================================
             
@@ -386,6 +386,7 @@ class LoadStreams:
         n = len(sources)
         self.sources = [clean_str(x) for x in sources]  # clean source names for later
         self.imgs, self.fps, self.frames, self.threads = [None] * n, [0] * n, [0] * n, [None] * n
+        
         #Alister add 2023-02-28
         if SAVE_RAW_STREAM:
             now = datetime.now()
@@ -478,15 +479,18 @@ class LoadStreams:
         
         
         #==============================================
+        '''
         if SAVE_RAW_STREAM:
             names="test_2023_03_03"
             im0[0] = np.ascontiguousarray(im0[0])  # contiguous
             annotator = Annotator(im0[0], line_width=3, example=str(names))
             if not SET_H is 720:
                 im0[0] = im0[0][..., ::-1]
-            annotator.time_label(frame_count=self.count,txt_color=(0,255,128))
+            annotator.time_label(frame_count=self.count,txt_color=(0,0,255))
             self.vw.write(im0[0])
+        '''
         #==============================================
+        
         #if self.transforms:
             #im = np.stack([self.transforms(x) for x in im0])  # transforms
         #else:
@@ -497,7 +501,7 @@ class LoadStreams:
         im = np.ascontiguousarray(im)  # contiguous
         #print("[__next__]im.ascontiguousarray shape : {}".format(im.shape))
 
-        return self.sources, im, im0, None, ''
+        return self.sources, im, im0, None, '', self.count
 
     def __len__(self):
         return len(self.sources)  # 1E12 frames = 32 streams at 30 FPS for 30 years
